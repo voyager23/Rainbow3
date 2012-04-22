@@ -338,7 +338,7 @@ int main(int argc, char **argv) {
 		printf("Looking for a matching chain...\n");
 		collisions=0;
 		
-		check = (TableEntry*)malloc(sizeof(TableEntry)*(i+1));
+		check = (TableEntry*)malloc(sizeof(TableEntry)*(LINKS));
 		
 		for(i=0;i<LINKS;i++) {				
 			// left points to candidate
@@ -362,9 +362,10 @@ int main(int argc, char **argv) {
 				// the password/hash pair.
 				// check = (TableEntry*)malloc(sizeof(TableEntry)*(i+1));
 				strcpy(check->initial_password,(compare)->initial_password);
+				
 				compute_chain(check,i+1);
 
-				show_table_entries(check,i,i);
+				show_table_entries(check,0,i);
 					
 				if(hash_compare_uint32_t((target)->final_hash,(check+i)->final_hash)==0) {
 					printf("\033[31m");

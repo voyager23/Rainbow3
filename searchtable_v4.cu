@@ -236,13 +236,13 @@ int main(int argc, char **argv) {
 	// setup known solution in 'target' for debug
 	// associated hash is loaded into "input_hash"
 	target->sublinks=0;
-	strcpy(target->initial_password, "HB15slS");
-	hash2uint32("e1dab398b5cc21cd9aa8c2db286b4a337ba019502aca82cfe85de133f51d8ff5",
-				(uint32_t*)&target->input_hash[0]);
+	strcpy(target->initial_password, "ZZ90syK");
+	hash2uint32("b545a2399c2cb7dabf7ce8eae859789574266163d18a7296f715c34affca2b6f",
+				(uint32_t*)&target->final_hash[0]);
 	
 	// confirmation	of target
 	printf("\nConfirming selected target data.\nPassword: %s\nHash: ", target->initial_password);
-	for(dx=0;dx<8;dx++) printf("%08x ", target->input_hash[dx]);
+	for(dx=0;dx<8;dx++) printf("%08x ", target->final_hash[dx]);
 	printf("\n");
 	
 
@@ -260,13 +260,13 @@ int main(int argc, char **argv) {
 	for(i=0;i<LINKS;i++) {
 		(subchain_entry+i)->sublinks=0;
 		for(di=0;di<8;di++) {
-			(subchain_entry+i)->input_hash[di] = target->input_hash[di];
+			(subchain_entry+i)->input_hash[di] = target->final_hash[di];
 			(subchain_entry+i)->final_hash[di] = 0xffffffff;
 		}
 	}
 	
-	show_table_entries(subchain_entry,0,2);
-	show_table_entries(subchain_entry,2045,2047);
+	//show_table_entries(subchain_entry,0,2);
+	//show_table_entries(subchain_entry,2045,2047);
 
 	// allocate device memory
 	HANDLE_ERROR(cudaMalloc((void**)&dev_header,sizeof(TableHeader)));
@@ -282,8 +282,8 @@ int main(int argc, char **argv) {
 	// copy entries to host
 	HANDLE_ERROR(cudaMemcpy(subchain_entry, dev_entry, sizeof(TableEntry)*LINKS, cudaMemcpyDeviceToHost));
 
-	show_table_entries(subchain_entry,0,2);
-	show_table_entries(subchain_entry,2045,2047);
+	//show_table_entries(subchain_entry,0,2);
+	//show_table_entries(subchain_entry,2045,2047);
 
 
 	// Search Rainbow Table
@@ -316,8 +316,7 @@ int main(int argc, char **argv) {
 		printf("Looking for a matching chain...\n");
 		collisions=0;
 		solutions=0;
-		//check = (TableEntry*)malloc(sizeof(TableEntry)*(i+1));
-		printf("DEBUG (i+1) = %d",(i+1));
+		check = (TableEntry*)malloc(sizeof(TableEntry)*(LINKS));
 		for(i=0;i<LINKS;i++) {				
 			// left points to candidate
 			// left = (subchain_entry+i)->final_hash;
@@ -344,21 +343,23 @@ int main(int argc, char **argv) {
 
 				// Forward calculate the chain (entry+di) to (possibly) recover 
 				// the password/hash pair.
-				check = (TableEntry*)malloc(sizeof(TableEntry)*(i+1));
-				strcpy(check->initial_password,compare->initial_password);				
+				// check = (TableEntry*)malloc(sizeof(TableEntry)*(i+1));
+				strcpy(check->initial_password,compare->initial_password);
+							
 				compute_chain(check,i+1);
 
 				printf("target->input_hash\n");
-				for(dx=0;dx<8;dx++) printf("%08x ", (target)->input_hash[dx]);
+				for(dx=0;dx<8;dx++) printf("%08x ", (target)->final_hash[dx]);
 				printf("\ncheck+i->final_hash\n");
 				for(dx=0;dx<8;dx++) printf("%08x ", (check+i)->final_hash[dx]);
 				printf("\n");
-
+				
+				//show_table_entries(check,0,i);
 			
-				if(hash_compare_uint32_t((target)->input_hash,(check+i)->final_hash)==0) {
+				if(hash_compare_uint32_t((target)->final_hash,(check+i)->final_hash)==0) {
 					printf("\033[31m");
 					printf("\n=====SOLUTION FOUND===== \n%s\n",(check+i)->initial_password);
-					for(dx=0;dx<8;dx++) printf("%08x ", (target)->input_hash[dx]);
+					for(dx=0;dx<8;dx++) printf("%08x ", (target)->final_hash[dx]);
 					printf("\033[0m");
 					solutions++;
 					free(check);
@@ -369,12 +370,12 @@ int main(int argc, char **argv) {
 					printf("- ");
 					collisions++; 
 				}
-				free(check);				 
+				//free(check);				 
 			} else { 
 				printf(". "); 
 			} // if (compare)				
 		} // for[i=0]
-		//free(check);		
+		free(check);		
 		free(entry);
 		free(header);
 	} // while !EOF

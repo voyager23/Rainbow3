@@ -6,7 +6,7 @@ objs = $(addprefix ./obj/, table_utils.o  fname_gen.o md5.o)
 
 deps = rainbow.h table_utils.h freduce.h fname_gen.h md5.h
 
-all : cmaketab csearch
+all : search csearch
 
 cmaketab : $(objs)
 	gcc -Wall -pthread -lm maketable_v7.c $^ -o ./bin/$@

@@ -85,9 +85,11 @@ void show_table_entries(TableEntry *entry,int first,int last) {
 	// display entries from table from first to last inclusive
 	int idx,i;
 	for(idx=first; idx <=last; idx++) {
-		printf("Entry[%d]:\t%s Hash: ",idx,(entry+idx)->initial_password);
+		printf("Initial password[%d]: %s\nFinal Hash: ",idx,(entry+idx)->initial_password);
 		for(i=0;i<8;i++) printf("%08x ",(entry+idx)->final_hash[i]);
-		printf("\n");
+		printf("\nInput hash: ");
+		for(i=0;i<8;i++) printf("%08x ",(entry+idx)->input_hash[i]);
+		printf("\nSublinks: %d\n\n", (entry+idx)->sublinks);
 	}
 }
 //=============================================================================

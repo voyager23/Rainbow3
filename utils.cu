@@ -3,6 +3,8 @@ int get_rnd_table_entry(TableEntry *target, FILE * fp);
 __host__
 void show_table_header(TableHeader *header);
 __host__
+void show_table_entries(TableEntry *entry,int first,int last);
+__host__
 int hash_compare_32bit(void const *p1, void const *p2);
 __host__
 int hash_compare_uint32_t(uint32_t *left, uint32_t *right);
