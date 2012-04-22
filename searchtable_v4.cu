@@ -307,9 +307,7 @@ int main(int argc, char **argv) {
 		fread(header,sizeof(TableHeader),1,fp_rbow);
 		entry = (TableEntry*)malloc(sizeof(TableEntry)*header->entries);
 		fread(entry,sizeof(TableEntry),header->entries,fp_rbow);
-		fclose(fp_rbow);	
-		
-		show_table_header(header);
+		fclose(fp_rbow);
 		
 		// try to match a subchain final_hash against final_hash in main table
 		// if match found - report chain_index and link_index.
@@ -364,7 +362,7 @@ int main(int argc, char **argv) {
 		free(subchain_header);
 		free(subchain_entry);
 	// end move
-	printf("\nThis run found %d solution and had %d collisions.\n",solutions,collisions);
+	printf("\nThis run had %d collisions.\n",collisions);
 	// free memory and file handles 
 	fclose(fp_tables);
 	free(target);
