@@ -222,7 +222,7 @@ int main(int argc, char **argv) {
 
 	target = (TableEntry*)malloc(sizeof(TableEntry));
 
-#if(0)	
+#if(1)	
 	// get test data - this is a known password/hash pair	
 	srand(time(NULL));
 	fp_rbow = fopen("./rbt/RbowTab_merge.rbt","r");
@@ -231,14 +231,14 @@ int main(int argc, char **argv) {
 	//Confirming selected target data.
 	//Password: VI21tdV
 	//Hash: 1b69ba30 d4c58d76 51d114fe c9f57390 73b5f0d4 84ee9870 f483f478 bce85866 
-#endif
-
+#else
 	// setup known solution in 'target' for debug
 	// associated hash is loaded into "input_hash"
 	target->sublinks=0;
 	strcpy(target->initial_password, "ZZ90syK");
 	hash2uint32("b545a2399c2cb7dabf7ce8eae859789574266163d18a7296f715c34affca2b6f",
 				(uint32_t*)&target->final_hash[0]);
+#endif
 	
 	// confirmation	of target
 	printf("\nConfirming selected target data.\nPassword: %s\nHash: ", target->initial_password);
@@ -328,34 +328,14 @@ int main(int argc, char **argv) {
 			 */			
 			compare = (TableEntry*)bsearch((subchain_entry+i), entry,
 				header->entries, sizeof(TableEntry), hash_compare_32bit );
-			
-			printf("\n%s\n",compare->initial_password);
 
 			if(compare!=NULL) {
-				printf("?");
-
-				// debug print subchain final_hash and entry final_hash
-				printf("\n");
-				for(dx=0;dx<8;dx++) printf("%08x ", (subchain_entry+i)->final_hash[dx]);
-				printf("\n");
-				for(dx=0;dx<8;dx++) printf("%08x ", (compare)->final_hash[dx]);
-				printf("\n");
-
+				// printf("?");
 				// Forward calculate the chain (entry+di) to (possibly) recover 
 				// the password/hash pair.
 				// check = (TableEntry*)malloc(sizeof(TableEntry)*(i+1));
-				strcpy(check->initial_password,compare->initial_password);
-							
-				compute_chain(check,i+1);
-
-				printf("target->input_hash\n");
-				for(dx=0;dx<8;dx++) printf("%08x ", (target)->final_hash[dx]);
-				printf("\ncheck+i->final_hash\n");
-				for(dx=0;dx<8;dx++) printf("%08x ", (check+i)->final_hash[dx]);
-				printf("\n");
-				
-				//show_table_entries(check,0,i);
-			
+				strcpy(check->initial_password,compare->initial_password);							
+				compute_chain(check,i+1);			
 				if(hash_compare_uint32_t((target)->final_hash,(check+i)->final_hash)==0) {
 					printf("\033[31m");
 					printf("\n=====SOLUTION FOUND===== \n%s\n",(check+i)->initial_password);
@@ -367,12 +347,12 @@ int main(int argc, char **argv) {
 					free(header);
 					goto found;
 				} else { 
-					printf("- ");
+					//printf("- ");
 					collisions++; 
 				}
 				//free(check);				 
 			} else { 
-				printf(". "); 
+				//printf(". "); 
 			} // if (compare)				
 		} // for[i=0]
 		free(check);		

@@ -1,3 +1,5 @@
+//-----Declarations-----
+
 __host__
 int get_rnd_table_entry(TableEntry *target, FILE * fp);
 __host__
@@ -10,6 +12,8 @@ __host__
 int hash_compare_uint32_t(uint32_t *left, uint32_t *right);
 __host__
 void compute_chain(TableEntry *entry, int links);
+
+//-----Definitions-----
 
 __host__
 int get_rnd_table_entry(TableEntry *target, FILE * fp) {
@@ -181,13 +185,15 @@ void compute_chain(TableEntry *entry, int links) {
 		for(i=16;i<64;i++) W[i] = SIG1(W[i-2]) + W[i-7] + SIG0(W[i-15]) + W[i-16];
 	
 		// set initial hash values
-		initHash(H);
-
+		initHash(H);		
+		
 		// Now calc the hash
 		sha256_transform(W,H);
 		
 		// save hash in Table
-		for(i=0;i<8;i++) (entry+link_idx)->final_hash[i] = H[i];
+		for(i=0;i<8;i++) {
+			(entry+link_idx)->final_hash[i] = H[i];
+		}
 
 		// Reduce the Hash and store in B using reduce_hash function		
 		(void)reduce_hash(H,B,link_idx);

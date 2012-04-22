@@ -58,6 +58,11 @@ void sha256_transform(uint32_t *w, uint32_t *H) {
 	f = H[5];
 	g = H[6];
 	h = H[7];
+	
+	//DEBUG
+	//printf("single_chain:\n");
+	//for(i=0;i<64;i++) printf("k=%08x w=%08x\n", k[i],w[i]);
+	//END DEBUG
    
    for (i = 0; i < 64; ++i) {  
       T1 = h + EP1(e) + CH(e,f,g) + k[i] + w[i];
@@ -70,6 +75,13 @@ void sha256_transform(uint32_t *w, uint32_t *H) {
       c = b;
       b = a;
       a = T1 + T2;
+      
+      //DEBUG
+	//printf("single_chain:\n");
+	//printf("T1: %08x\n",T1);
+	//printf("T2: %08x\n",T2);
+	//END DEBUG
+	
   }      
     // compute single block hash value
 	H[0] += a;
@@ -156,12 +168,16 @@ void compute_chain_dev(TableEntry *entry, int links)
 	
 		// set initial hash values
 		initHash(H);
-
+		
+		
+			
 		// Now calc the hash
 		sha256_transform(W,H);
 		
 		// save hash in Table
-		for(i=0;i<8;i++) (entry+chain_idx)->final_hash[i] = H[i];
+		for(i=0;i<8;i++) {
+			(entry+chain_idx)->final_hash[i] = H[i];
+		}
 
 		// Reduce the Hash and store in B using reduce_hash function		
 		reduce_hash(H,B,chain_idx);
