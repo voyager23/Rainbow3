@@ -24,11 +24,10 @@
 #include <time.h>
 
 //=========================Declarations=================================
-#ifdef __CUDA__
 __global__
-#endif
 void kernel(TableHeader *header, TableEntry *entry);
 //=========================Definitions==================================
+__host__
 static void HandleError( cudaError_t err,
                          const char *file,
                          int line ) {
@@ -43,36 +42,16 @@ static void HandleError( cudaError_t err,
 
 //Removed hash constant k[64] from here - 23Apr2012
 
-//=========================Include Device Code==========================
+//=========================Include functions and utilities==============
 #include "freduce.cu"
 #include "initHash.cu"
 #include "sha256_txfm.cu"
 #include "utils.cu"
-//======================================================================
-void hash2uint32(char *hash_str, uint32_t *H) {
-	// hash_str must be 64 byte hexadecimal string
-	const int words=8;
-	char buffer[9], *source=hash_str;
-	int i,len;
-	len = strlen(hash_str);
-	if(len != sizeof(unsigned)*words*2) {
-		printf("Error - hash2uint32: hash_str length=%d\n",len);
-		exit(1);
-	}	
-	for(i=0;i<words;i++) {
-		strncpy(buffer,source,8);
-		buffer[8]='\0';
-		sscanf(buffer,"%x",H+i);
-		source+=8;
-	}
-}
 //=========================Kernel=======================================
-#ifdef __CUDA__
 __global__
-#endif
 void kernel(TableHeader *header, TableEntry *entry) {
 /*
-	* revised 29Dec2011
+	* revised 23Apr2012
 	* The parameter is the base address of a large table of TableEntry(s)
 	* Derived from table_calculate - given a target hash calculate a table
 	* of candidate hashes
@@ -244,9 +223,6 @@ int main(int argc, char **argv) {
 			(subchain_entry+i)->final_hash[di] = 0xffffffff;
 		}
 	}
-	
-	//show_table_entries(subchain_entry,0,2);
-	//show_table_entries(subchain_entry,2045,2047);
 
 	// allocate device memory
 	HANDLE_ERROR(cudaMalloc((void**)&dev_header,sizeof(TableHeader)));
@@ -262,12 +238,9 @@ int main(int argc, char **argv) {
 	// copy entries to host
 	HANDLE_ERROR(cudaMemcpy(subchain_entry, dev_entry, sizeof(TableEntry)*LINKS, cudaMemcpyDeviceToHost));
 
-	//show_table_entries(subchain_entry,0,2);
-	//show_table_entries(subchain_entry,2045,2047);
-
-
-	// Search Rainbow Table
-	// ----------now set up the Rainbow table----------
+	// Search Rainbow Tables for solution
+	
+	// ----------set up the Rainbow table----------
 	fp_tables = fopen(tables_path,"r");
 	if(fp_tables==NULL) {
 		printf("Error - unable to open %s\n",tables_path);

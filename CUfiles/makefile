@@ -14,7 +14,7 @@ thisto : $(objs)
 	gcc -Wall -lm thisto.c $^ -o ./bin/$@
 	
 search: $(objs)
-	nvcc searchtable_v4.cu ./bin/search
+	nvcc searchtable_v4.cu -o ./bin/search
 	
 #-----------------------------------------------------------------------
 	

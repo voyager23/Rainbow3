@@ -1,5 +1,6 @@
 //-----Declarations-----
-
+__host__
+void hash2uint32(char *hash_str, uint32_t *H);
 __host__
 int get_rnd_table_entry(TableEntry *target, FILE * fp);
 __host__
@@ -14,7 +15,24 @@ __host__
 void compute_chain(TableEntry *entry, int links);
 
 //-----Definitions-----
-
+__host__
+void hash2uint32(char *hash_str, uint32_t *H) {
+	// hash_str must be 64 byte hexadecimal string
+	const int words=8;
+	char buffer[9], *source=hash_str;
+	int i,len;
+	len = strlen(hash_str);
+	if(len != sizeof(unsigned)*words*2) {
+		printf("Error - hash2uint32: hash_str length=%d\n",len);
+		exit(1);
+	}	
+	for(i=0;i<words;i++) {
+		strncpy(buffer,source,8);
+		buffer[8]='\0';
+		sscanf(buffer,"%x",H+i);
+		source+=8;
+	}
+}
 __host__
 int get_rnd_table_entry(TableEntry *target, FILE * fp) {
 	// target is pointer to a single TableEntry struct.
