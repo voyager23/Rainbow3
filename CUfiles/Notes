@@ -1,0 +1,177 @@
+string: AstonVilla
+fb600b7d 0ce3ca11 50762549 e069e8ca bb45edf3 ea9913af 45191533 4e1cd36d 
+string: Michael
+f089eaef 57aba315 bc0e1455 985c0c8e 40c247f0 73ce1f4c 5a1f8ffd e8773176 
+string: linux
+caf90169 eefa5f80 7d577486 b9f795ab 86ae2983 c5c20806 cff95911 7e90af18 
+
+__constant__ uint32_t TargHash[8] = {	// hash for "abc"
+	0xba7816bf,
+	0x8f01cfea,
+	0x414140de,
+	0x5dae2223,
+	0xb00361a3,
+	0x96177a9c,
+	0xb410ff61,
+	0xf20015ad };
+
+__constant__ uint32_t TargHash[8] = {	// hash for "AstonVilla"
+	0xfb600b7d,
+	0x0ce3ca11,
+	0x50762549,
+	0xe069e8ca,
+	0xbb45edf3,
+	0xea9913af,
+	0x45191533,
+	0x4e1cd36d };
+
+64 Link chain computed by shell script. Approx 100 links/sec
+
+Initial Password: AB12cdE 
+Final Hash: 41fd41c2815ecd003f5c9933a5b24a3cd210878802af006d9b91e86293f2e4c1
+
+time bash chain 1024
+1024 Link Chain
+Initial Password: AB12cdE 
+Final Hash: 2573b45fe04567425a9c3a5965c9fbcc2839246a6368b94174b6fbbeb2127d1c
+
+real	0m10.355s
+user	0m3.779s
+sys	0m8.271s
+
+1M Link chain => 2h 54m
+
+Links 2: Running...
+AB12cdE ad71e436153e32069e9c541de07180375ec066decc4cc9b5c8e2ee83c8fe24d9
+RJ84vkY 1f01cac303c0da3867e648e98a1c1426d21341cebe2fd2abd1372d9c59bac35a
+
+AB12cdE 1f01cac303c0da3867e648e98a1c1426d21341cebe2fd2abd1372d9c59bac35a
+
+Rainbow Table Setup
+
+	Start	
+	define TableHeader and TableEntry
+		rainbow.h
+	Allocate space for table body
+	Generate and store random UUnnllU passwords (Nchains) in table body
+	Allocate space for Table header (64bytes)
+	Enter values in Header
+	Determine the file name
+	Write header to file
+	Write body to file
+	Stop
+
+>>>>>MD5sum from openssl>>>>>
+
+#include <openssl/md5.h>
+#include <unistd.h>
+int main()
+{
+        int n;
+        MD5_CTX c;
+        char buf[512];
+        ssize_t bytes;
+
+        MD5_Init(&c);
+        bytes=read(STDIN_FILENO, buf, 512);
+        while(bytes > 0)
+        {
+                MD5_Update(&c, buf, bytes);
+                bytes=read(STDIN_FILENO, buf, 512);
+        }
+
+        MD5_Final(out, &c);
+
+        for(n=0; n<MD5_DIGEST_LENGTH; n++)
+                printf("%02x", out[n]);
+
+        return(0);        
+}
+
+23Dec2011 - maketable-v2 working, consider sorting and removing duplicates, update entries as appropriate 
+
+Hash is stored as 32 byte + zero term string
+
+INITIAL: EH82fcM
+WORKING: EH82fcM
+Hash: 3340c9f1740baa46f7088f422fed9997a712c68eddb387bc268da1b15657fa86
+
+=========================================================================================================
+Search table for TargetHash
+
+Calculate_Hashes parameters TargetHash Tablename
+
+input to device is targethash - output from device is table of candidate hashes (1024) the number of candidate hashes must be equal to the LINKS in the search table (allocate space prior to processing)
+
+hash2uint32(char *hash_str, uint32_t H[])
+	// convert hash string to 8 32bit words
+
+start_idx = threadIdx.x   0->1023 final hash is not processed
+
+move target hash to buffer H
+while start_idx < LINKS-1 {
+	reducehash(H,B,start_idx)	# working password in B
+	initHash
+	sha256_transform(W,H)
+	start_idx++
+}
+save hash H in output table
+sync_threads
+
+int main(int argc, char **argv) {
+	uint32_t H[8];
+	char *hash_str="3340c9f1740baa46f7088f422fed9997a712c68eddb387bc268da1b15657fa86";
+	hash2uint32(hash_str,H);
+	
+	return(0);
+}
+
+21Jan2012:
+Testing search functions:
+1) open rainbow table and extract a random password/hash pair. Close table
+	a) open file RbowTab_sort64
+	b) read header (entries and links)
+	c) random select chain and link index
+	d) calculate the password/hash pair at this position
+2) Using the hash generate a list of candidate final_hashes to search for. (LINKS candidates)
+3) for each candidate final_hash, search rainbow table for chains with matching final_hashes.
+4) for each matching chain search forward for the original password hash pair. Output any match.
+
+# kill the touchpad
+# edit .profile?
+gconftool-2 --set --type boolean /desktop/gnome/peripherals/touchpad/touchpad_enabled true
+
+Directory search: opendir readdir closedir - see man pages
+#include <dirent.h>
+len = strlen(name);
+   dirp = opendir(".");
+   while ((dp = readdir(dirp)) != NULL)
+           if (dp->d_namlen == len && !strcmp(dp->d_name, name)) {
+                   (void)closedir(dirp);
+                   return FOUND;
+           }
+   (void)closedir(dirp);
+   return NOT_FOUND;
+
+16Feb2012
+Branch pthread created:
+
+
+05mar2012 - Single change to test repo
+
+Error in compile gcc 4.5
+libtool: link: /home/mike/gcc-4.5.3/host-x86_64-unknown-linux-gnu/gcc/gcj -B/home/mike/gcc-4.5.3/x86_64-unknown-linux-gnu/32/libjava/ -B/home/mike/gcc-4.5.3/x86_64-unknown-linux-gnu/32/libjava/ -B/home/mike/gcc-4.5.3/host-x86_64-unknown-linux-gnu/gcc/ -B/usr/local/x86_64-unknown-linux-gnu/bin/ -B/usr/local/x86_64-unknown-linux-gnu/lib/ -isystem /usr/local/x86_64-unknown-linux-gnu/include -isystem /usr/local/x86_64-unknown-linux-gnu/sys-include -m32 -ffloat-store -fomit-frame-pointer -g -O2 -m32 -m32 -o .libs/jv-convert --main=gnu.gcj.convert.Convert -shared-libgcc  -L/home/mike/gcc-4.5.3/x86_64-unknown-linux-gnu/32/libjava/.libs -L/home/mike/gcc-4.5.3/x86_64-unknown-linux-gnu/32/libjava ./.libs/libgcj.so -lpthread -lrt -ldl -Wl,-rpath -Wl,/usr/local/lib/../lib
+./.libs/libgcj.so: undefined reference to `__cxa_call_unexpected'
+collect2: ld returned 1 exit status
+make[5]: *** [jv-convert] Error 1
+make[5]: Leaving directory `/home/mike/gcc-4.5.3/x86_64-unknown-linux-gnu/32/libjava'
+make[4]: *** [all-recursive] Error 1
+make[4]: Leaving directory `/home/mike/gcc-4.5.3/x86_64-unknown-linux-gnu/32/libjava'
+make[3]: *** [multi-do] Error 1
+make[3]: Leaving directory `/home/mike/gcc-4.5.3/x86_64-unknown-linux-gnu/libjava'
+make[2]: *** [all-multi] Error 2
+make[2]: Leaving directory `/home/mike/gcc-4.5.3/x86_64-unknown-linux-gnu/libjava'
+make[1]: *** [all-target-libjava] Error 2
+make[1]: Leaving directory `/home/mike/gcc-4.5.3'
+make: *** [all] Error 2
+You have new mail in /var/spool/mail/mike
