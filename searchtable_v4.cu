@@ -4,6 +4,7 @@
 	* 05Apr2012
 	* Incorporating new code from the threaded searchtable_v7.c
 	* nvcc -Xlinker -lm searchtable_v3.cu table_utils.c md5.c
+	* Updated version 22Apr2012
 	*
 */
 
