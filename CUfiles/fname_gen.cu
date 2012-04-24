@@ -22,6 +22,7 @@ void fname_gen(char *buffer, char *type_str, int dim) {
 	sprintf(buffer,"%s_%s_%s_%d.%s",root,type_str,dimension,(int)now,rbt);
 }
 
+__host__
 int fname_read(char *buffer) {
 	// read table names from RbowTab_tables_0.rbt
 	FILE *fp;
@@ -37,6 +38,7 @@ int fname_read(char *buffer) {
 	return 0;
 }
 
+__host__
 int fname_write(char *buffer) {
 	FILE *fp;
 
@@ -50,6 +52,7 @@ int fname_write(char *buffer) {
 	return 0;
 }
 
+__host__
 int fname_list(TableList* tbl) {
 	// --TODO--
 	// open the list of table names

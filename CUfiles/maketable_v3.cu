@@ -20,6 +20,8 @@
 #include "freduce.cu"
 #include "fname_gen.h"
 
+#include "func_void.h"
+
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,6 +38,7 @@ __host__
 int sort_table(TableHeader*,TableEntry*);
 __host__
 int hash_compare_32bit(void const *p1, void const *p2);
+
 __device__ 
 void initHash(uint32_t *h);
 __device__ 
@@ -57,26 +60,7 @@ static void HandleError( cudaError_t err,
 #define HANDLE_ERROR( err ) (HandleError( err, __FILE__, __LINE__ ))
 
 //======================================================================
-
 __host__
-int hash_compare_32bit(void const *p1, void const *p2) {
-	// used by bsearch function
-	int i;
-	uint32_t *left=(uint32_t*)&(((TableEntry*)p1)->final_hash);
-	uint32_t *right=(uint32_t*)&(((TableEntry*)p2)->final_hash);
-
-	for(i=0; i<8; i++) {
-		if(*(left+i) > *(right+i)) 
-			return(1);
-		else if(*(left+i) < *(right+i)) 
-			return(-1);
-		else
-			continue;
-	}
-	return(0);
-}
-//======================================================================	
-
 void table_setup(TableHeader *header, TableEntry *entry) {
 	int i,di;
 	unsigned int t_size=sizeof(TableHeader)+(sizeof(TableEntry)*DIMGRIDX*THREADS);
@@ -120,7 +104,8 @@ void table_setup(TableHeader *header, TableEntry *entry) {
 	    sprintf(header->check_sum + di * 2, "%02x", digest[di]);
 	*(header->check_sum + di * 2) = '\0';
 }
-//=============================================================================
+//======================================================================
+__host__
 int sort_table(TableHeader *header,TableEntry *entry) {
 	// Revised code to read directly from memory
 
@@ -150,10 +135,29 @@ int sort_table(TableHeader *header,TableEntry *entry) {
 
 	return(0);
 }
-//=========================Device Code=========================================
-// Reduction function goes here
-//=============================================================================
-__device__ void initHash(uint32_t *h) {
+//======================================================================
+__host__
+int hash_compare_32bit(void const *p1, void const *p2) {
+	// used by bsearch function
+	int i;
+	uint32_t *left=(uint32_t*)&(((TableEntry*)p1)->final_hash);
+	uint32_t *right=(uint32_t*)&(((TableEntry*)p2)->final_hash);
+
+	for(i=0; i<8; i++) {
+		if(*(left+i) > *(right+i)) 
+			return(1);
+		else if(*(left+i) < *(right+i)) 
+			return(-1);
+		else
+			continue;
+	}
+	return(0);
+}
+
+//=========================Device Code==================================
+
+__device__
+void initHash(uint32_t *h) {
 	h[0] = 0x6a09e667;
 	h[1] = 0xbb67ae85;
 	h[2] = 0x3c6ef372;
@@ -163,8 +167,9 @@ __device__ void initHash(uint32_t *h) {
 	h[6] = 0x1f83d9ab;
 	h[7] = 0x5be0cd19;
 }
-//=============================================================================
-__device__ void sha256_transform(uint32_t *w, uint32_t *H) {
+//======================================================================
+__device__
+void sha256_transform(uint32_t *w, uint32_t *H) {
 	//working variables 32 bit words
 	int i;
 	uint32_t a,b,c,d,e,f,g,h,T1,T2;
@@ -211,8 +216,9 @@ uint32_t k[64] = {
 	H[7] += h;
 }
 
-//-----------------------------------------------------------------------------
-   __global__ void table_calculate(TableHeader *header, TableEntry *entry) {
+//----------------------------------------------------------------------
+__global__
+void table_calculate(TableHeader *header, TableEntry *entry) {
 	// revised 29Dec2011
 	// The parameter is the base address of a large table of TableEntry(s)
 	
@@ -314,7 +320,8 @@ uint32_t k[64] = {
 	__syncthreads();
 }
 
-//=================================Main Code==================================
+//=================================Main Code============================
+
 int main(int argc, char **argv) {
 
 	TableHeader *header, *dev_header;
@@ -323,6 +330,8 @@ int main(int argc, char **argv) {
 	char sort_file[81];
 	FILE *table, *sort;
 	int i,di;
+	
+	
 
 	printf("maketable_v3.\n");
 	fname_gen(table_file,"new64",DIMGRIDX*THREADS);
@@ -397,12 +406,12 @@ int main(int argc, char **argv) {
 		fclose(sort);
 
 		// DEBUG: display entries from table
-		int idx;
-		for(idx=0; idx < DIMGRIDX*THREADS; idx++) {
-			printf("\nEntry[%d]:%s \nFinal Hash: ",idx,(entry+idx)->initial_password);
-			for(i=0;i<8;i++) printf("%08x ",(entry+idx)->final_hash[i]);
-			printf("\nLinks: %d\n",LINKS);				
-		}
+		//int idx;
+		//for(idx=0; idx < DIMGRIDX*THREADS; idx++) {
+			//printf("\nEntry[%d]:%s \nFinal Hash: ",idx,(entry+idx)->initial_password);
+			//for(i=0;i<8;i++) printf("%08x ",(entry+idx)->final_hash[i]);
+			//printf("\nLinks: %d\n",LINKS);				
+		//}
 
 	}
 	// Clean up memory

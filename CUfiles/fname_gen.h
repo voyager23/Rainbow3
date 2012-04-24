@@ -14,16 +14,8 @@
 #include <string.h>
 #include "rainbow.h"
 
-#ifdef __cplusplus
-extern "C" 
-{
-#endif
-void fname_gen(char*,char*,int);
-int fname_read(char*);
-int fname_write(char*);
-int fname_list(TableList* tbl);
-#ifdef __cplusplus
-}
-#endif
-
+__host__ void fname_gen(char*,char*,int);
+__host__ int fname_read(char*);
+__host__ int fname_write(char*);
+__host__ int fname_list(TableList* tbl);
 #endif

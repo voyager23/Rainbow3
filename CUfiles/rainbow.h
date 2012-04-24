@@ -7,9 +7,9 @@
 	#define __RAINBOW_H__
 	#include <stdint.h>
 	// thread blocks
-	#define DIMGRIDX 1
+	#define DIMGRIDX 128
 	// threads per block
-	#define THREADS  8
+	#define THREADS  256
 	// Number of links in chain - defining characteristic of table.
 	#define LINKS 2048
 	// limit password to MAXLENGTH chars
