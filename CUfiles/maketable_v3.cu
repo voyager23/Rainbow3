@@ -4,6 +4,8 @@
 	* calculate and sort a rainbow table
 	* nvcc -Xlinker -lm maketable_v3.cu table_utils.c md5.c
 	* Modify to produce time stamped files
+	* 
+	* nvcc maketable_v3.cu md5.c fname_gen.c -o ./bin/search
 	*
 */
 
@@ -15,7 +17,7 @@
 #include "md5.h"
 #include "rainbow.h"
 #include "table_utils.h"
-#include "freduce.h"
+#include "freduce.cu"
 #include "fname_gen.h"
 
 #include <math.h>
@@ -25,25 +27,55 @@
 #include <endian.h>
 #include <time.h>
 
-// Hash constants
-__constant__	uint32_t k[64] = {
-	   0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
-	   0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
-	   0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
-	   0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
-	   0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
-	   0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
-	   0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
-	   0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2 };
 
-//=============================================================================
+
+//======================================================================
+__host__
 void table_setup(TableHeader*,TableEntry*);
+__host__
 int sort_table(TableHeader*,TableEntry*);
+__host__
+int hash_compare_32bit(void const *p1, void const *p2);
+__device__ 
+void initHash(uint32_t *h);
+__device__ 
+void sha256_transform(uint32_t *w, uint32_t *H);
+__global__ 
+void table_calculate(TableHeader*,TableEntry*);
+//======================================================================
 
-__device__ void initHash(uint32_t *h);
-__device__ void sha256_transform(uint32_t *w, uint32_t *H);
-__global__ void table_calculate(TableHeader*,TableEntry*);
-//=============================================================================
+static void HandleError( cudaError_t err,
+                         const char *file,
+                         int line ) {
+    if (err != cudaSuccess) {
+        printf( "%s in %s at line %d\n", cudaGetErrorString( err ),
+                file, line );
+        exit( EXIT_FAILURE );
+    }
+}
+
+#define HANDLE_ERROR( err ) (HandleError( err, __FILE__, __LINE__ ))
+
+//======================================================================
+
+__host__
+int hash_compare_32bit(void const *p1, void const *p2) {
+	// used by bsearch function
+	int i;
+	uint32_t *left=(uint32_t*)&(((TableEntry*)p1)->final_hash);
+	uint32_t *right=(uint32_t*)&(((TableEntry*)p2)->final_hash);
+
+	for(i=0; i<8; i++) {
+		if(*(left+i) > *(right+i)) 
+			return(1);
+		else if(*(left+i) < *(right+i)) 
+			return(-1);
+		else
+			continue;
+	}
+	return(0);
+}
+//======================================================================	
 
 void table_setup(TableHeader *header, TableEntry *entry) {
 	int i,di;
@@ -136,6 +168,16 @@ __device__ void sha256_transform(uint32_t *w, uint32_t *H) {
 	//working variables 32 bit words
 	int i;
 	uint32_t a,b,c,d,e,f,g,h,T1,T2;
+	// Hash constants
+uint32_t k[64] = {
+	   0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+	   0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+	   0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+	   0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+	   0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+	   0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+	   0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+	   0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2 };
 
 	a = H[0];
 	b = H[1];
@@ -283,13 +325,13 @@ int main(int argc, char **argv) {
 	int i,di;
 
 	printf("maketable_v3.\n");
-	fname_gen(table_file,"new64");
+	fname_gen(table_file,"new64",DIMGRIDX*THREADS);
 	table=fopen(table_file,"w");
 	if(table==NULL) {
 		printf("Error - maketable_v3: Unable to open table file.\n");
 		return(1);
 	}
-	fname_gen(sort_file,"sort64");
+	fname_gen(sort_file,"sort64",DIMGRIDX*THREADS);
 	sort=fopen(sort_file,"w");
 	if(sort==NULL) {
 		printf("Error - maketable_v3: Unable to open sort file.\n");
@@ -301,26 +343,26 @@ int main(int argc, char **argv) {
 	if((header != NULL)&&(entry != NULL)) {
 
 		table_setup(header,entry);	// initialise header and set initial passwords
+		
+		
 
 		// cudaMalloc spave for table header
-		cudaMalloc((void**)&dev_header,sizeof(TableHeader));
-		// copy header to device
-		cudaMemcpy(dev_header, header, sizeof(TableHeader), cudaMemcpyHostToDevice);
-
+		HANDLE_ERROR(cudaMalloc((void**)&dev_header,sizeof(TableHeader)));
 		// cudaMalloc space for table body
-		cudaMalloc((void**)&dev_entry,sizeof(TableEntry)*DIMGRIDX*THREADS);
+		HANDLE_ERROR(cudaMalloc((void**)&dev_entry,sizeof(TableEntry)*DIMGRIDX*THREADS));
+		
+		// copy header to device
+		HANDLE_ERROR(cudaMemcpy(dev_header, header, sizeof(TableHeader), cudaMemcpyHostToDevice));
 		// Copy entries to device
-		cudaMemcpy(dev_entry, entry, sizeof(TableEntry)*DIMGRIDX*THREADS, cudaMemcpyHostToDevice);
+		HANDLE_ERROR(cudaMemcpy(dev_entry, entry, sizeof(TableEntry)*DIMGRIDX*THREADS, cudaMemcpyHostToDevice));
 
-		// call device code
-
-		// launch kernel
+		// =====Launch Kernel=====
 		table_calculate<<<DIMGRIDX,THREADS>>>(dev_header,dev_entry);
 
-		// copy entries to host
-		cudaMemcpy(entry, dev_entry, sizeof(TableEntry)*DIMGRIDX*THREADS, cudaMemcpyDeviceToHost);
-		// copy header to host
-		cudaMemcpy(dev_header, header, sizeof(TableHeader), cudaMemcpyDeviceToHost);
+		// copy back entries to host
+		HANDLE_ERROR( cudaMemcpy(entry, dev_entry, sizeof(TableEntry)*DIMGRIDX*THREADS, cudaMemcpyDeviceToHost) );
+		// copy back header to host
+		HANDLE_ERROR( cudaMemcpy(header, dev_header, sizeof(TableHeader), cudaMemcpyDeviceToHost) );
 
 		// save table to file
 		fwrite(header,sizeof(TableHeader),1,table);
@@ -355,12 +397,12 @@ int main(int argc, char **argv) {
 		fclose(sort);
 
 		// DEBUG: display entries from table
-			int idx;
-			for(idx=0; idx < DIMGRIDX*THREADS; idx++) {
-				printf("\nEntry[%d]:%s \nFinal Hash: ",idx,(entry+idx)->initial_password);
-				for(i=0;i<8;i++) printf("%08x ",(entry+idx)->final_hash[i]);
-				printf("\nLinks: %d\n",LINKS);				
-			}
+		int idx;
+		for(idx=0; idx < DIMGRIDX*THREADS; idx++) {
+			printf("\nEntry[%d]:%s \nFinal Hash: ",idx,(entry+idx)->initial_password);
+			for(i=0;i<8;i++) printf("%08x ",(entry+idx)->final_hash[i]);
+			printf("\nLinks: %d\n",LINKS);				
+		}
 
 	}
 	// Clean up memory

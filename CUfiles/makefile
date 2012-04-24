@@ -6,7 +6,7 @@ objs = $(addprefix ./obj/, table_utils.o  fname_gen.o md5.o)
 
 deps = rainbow.h table_utils.h freduce.h fname_gen.h md5.h
 
-all : search
+all : search mktab
 	
 #-----------------------------------------------------------------------
 
@@ -15,6 +15,9 @@ thisto : $(objs)
 	
 search: $(objs)
 	nvcc searchtable_v4.cu -o ./bin/search
+	
+mktab : maketable_v3.cu md5.c md5.h fname_gen.c fname_gen.h
+	nvcc maketable_v3.cu md5.c fname_gen.c -o ./bin/mktab
 	
 #-----------------------------------------------------------------------
 	
