@@ -175,3 +175,17 @@ make[1]: *** [all-target-libjava] Error 2
 make[1]: Leaving directory `/home/mike/gcc-4.5.3'
 make: *** [all] Error 2
 You have new mail in /var/spool/mail/mike
+
+Notes:
+from tmerge.cu
+// ------Main Code------
+int main(int argc, char** argv)
+{	
+	char right[128];
+	// ask for 'right' filename
+	printf("Enter relative path to 'sorted' RbowTab: ");
+	scanf("%s",right);
+	// call function
+	tmerge(right, "./rbt/RbowTab_merge.rbt.new");
+	return 0;
+}

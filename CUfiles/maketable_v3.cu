@@ -5,7 +5,10 @@
 	* nvcc -Xlinker -lm maketable_v3.cu table_utils.c md5.c
 	* Modify to produce time stamped files
 	* 
-	* nvcc maketable_v3.cu md5.c fname_gen.c -o ./bin/search
+	* nvcc maketable_v3.cu ./obj/fname_gen.o ./obj/md5.o -o ./bin/mktab
+	* From the parameters in rainbow.h, maketable produces an unsorted
+	* table (new) and a table sorted on final hash (sorted). This is
+	* used for merging into the main table.
 	*
 */
 
@@ -19,8 +22,6 @@
 #include "table_utils.h"
 #include "freduce.cu"
 #include "fname_gen.h"
-
-#include "func_void.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -373,7 +374,7 @@ int main(int argc, char **argv) {
 		// copy back header to host
 		HANDLE_ERROR( cudaMemcpy(header, dev_header, sizeof(TableHeader), cudaMemcpyDeviceToHost) );
 
-		// save table to file
+		// save table to file 'new table'
 		fwrite(header,sizeof(TableHeader),1,table);
 		fwrite(entry,sizeof(TableEntry),header->entries,table);
 		fclose(table);
@@ -400,7 +401,7 @@ int main(int argc, char **argv) {
 		for (di = 0; di < 16; ++di)
 	    sprintf(header->check_sum + di * 2, "%02x", digest[di]);
 
-		// save sorted table to file
+		// save sorted table to file 'sorted table'
 		fwrite(header,sizeof(TableHeader),1,sort);
 		fwrite(entry,sizeof(TableEntry),header->entries,sort);
 		fclose(sort);
