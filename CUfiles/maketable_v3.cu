@@ -32,6 +32,7 @@
 #include <string.h>
 #include <endian.h>
 #include <time.h>
+#include <unistd.h>
 
 
 
@@ -116,8 +117,7 @@ int sort_table(TableHeader *header,TableEntry *entry) {
 	TableEntry  *target, *found;
 	int i;	//loop variable
 
-	printf("Sorting %u Table Entries:-\n", header->entries);
-
+	printf("Sorting %u Table Entries:-", header->entries);
 
 	qsort(entry, header->entries, sizeof(TableEntry), hash_compare_32bit);
 
@@ -355,7 +355,8 @@ int main(int argc, char **argv) {
 	header = (TableHeader*)malloc(sizeof(TableHeader));
 	entry = (TableEntry*)malloc(sizeof(TableEntry)*T_ENTRIES);
 	if((header != NULL)&&(entry != NULL)) {
-
+		
+		printf("Preparing the table header and initial passwords.\n");
 		table_setup(header,entry);	// initialise header and set initial passwords		
 
 		// cudaMalloc space for table header
@@ -368,6 +369,9 @@ int main(int argc, char **argv) {
 		
 		// .....workunit...loop start.....
 		for(work_unit=0; work_unit<WORKUNITS; work_unit++) {
+			
+			printf("Starting work unit %d.\n", work_unit);
+			sleep(1);	// pause the loop to allow output
 			
 			// track position in table of entries
 			offset = work_unit*DIMGRIDX*THREADS;
@@ -386,7 +390,7 @@ int main(int argc, char **argv) {
 			// save table to file 'new table'			
 			fwrite(entry+offset,sizeof(TableEntry),DIMGRIDX*THREADS,table);
 			
-			printf("Completed work unit %d\n",work_unit);
+			
 			
 		} // .....workunit...loop end.....
 		

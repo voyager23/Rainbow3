@@ -4,6 +4,8 @@ void hash2uint32(char *hash_str, uint32_t *H);
 __host__
 int get_rnd_table_entry(TableEntry *target, FILE * fp);
 __host__
+void make_rnd_target(TableEntry *target);
+__host__
 void show_table_header(TableHeader *header);
 __host__
 void show_table_entries(TableEntry *entry,int first,int last);
@@ -73,6 +75,25 @@ int get_rnd_table_entry(TableEntry *target, FILE * fp) {
 	free(chain);
 	free(header);
 	return(1);
+}
+
+__host__
+void make_rnd_target(TableEntry *target) {
+	// generate a random password.
+	// calculate the associated hash and store in 'target'
+	srand(time(NULL));
+	// Random password type 'UUnnllU'
+	target->initial_password[0]= (rand() % 26) + 'A';
+	target->initial_password[1]= (rand() % 26) + 'A';
+	target->initial_password[2]= (rand() % 10) + '0';
+	target->initial_password[3]= (rand() % 10) + '0';
+	target->initial_password[4]= (rand() % 26) + 'a';
+	target->initial_password[5]= (rand() % 26) + 'a';
+	target->initial_password[6]= (rand() % 26) + 'A';
+	target->initial_password[7]= '\0';
+	// DEBUG
+	target->final_hash[0] = 0x776f6272;
+	compute_chain(target,1);
 }
 
 __host__
