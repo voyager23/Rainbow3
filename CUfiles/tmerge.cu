@@ -42,7 +42,7 @@ int tmerge(char *sort){
 	
 	TableHeader *hdr_left, *hdr_right, *hdr_merge;
 	TableEntry  *ent_left, *ent_right, *ent_merge;
-	TableEntry  *l_ptr, *l_end, *r_ptr, *r_end, *merge_ptr, *merge_end;	
+	TableEntry  *l_ptr, *l_end, *r_ptr, *r_end, *merge_ptr;	
 	unsigned entries_total, entries_merged, entries_count, discarded;
 	int compare,r1,r2,error_flag;
 	
@@ -90,7 +90,7 @@ int tmerge(char *sort){
 	// set sentinels.
 	l_end = ent_left + hdr_left->entries;
 	r_end = ent_right + hdr_right->entries;
-	merge_end = ent_merge + entries_total;
+	// merge_end = ent_merge + entries_total;
 
 	// set working pointers and counter
 	entries_merged = 0;
@@ -159,7 +159,9 @@ int tmerge(char *sort){
 		fclose(fp_merge);
 		if((r1==1)&&(r2==entries_merged)) {
 			printf("Removing the original sorted table file.\n");
-			remove(sort);	// not required anymore	
+			remove(sort);	// not required anymore
+			printf("Removing the original new table file.\n");
+			remove(sort2new(sort));
 			
 			// remove previous merge.rbt.sav ...
 			remove(rbt_sav);
@@ -209,6 +211,20 @@ int filter(const struct dirent* dp) {
 	return((posn != NULL));
 }
 
+char *sort2new(char *buffer) {
+	char *pch;
+	typedef char Elem[64];
+	Elem parts[4];
+	int idx=0;	
+	pch = strtok(buffer,"_");
+	while(pch != NULL) {
+		strcpy(parts[idx++],pch);
+		pch = strtok(NULL,"_");
+	}	
+	sprintf(buffer,"%s_new64_%s_%s",parts[0],parts[2],parts[3]);
+	return(buffer);
+}
+
 // ------Main Code------
 
 int main(int argc, char** argv)
@@ -224,7 +240,7 @@ int main(int argc, char** argv)
         while (n--) {
 			sprintf(buffer,"./rbt/%s",namelist[n]->d_name);
             printf("Calling tmerge against: %s\n", buffer);
-            tmerge(buffer);
+            if(tmerge(buffer)==0) printf("Succeded\n");
             free(namelist[n]);
         }
         free(namelist);

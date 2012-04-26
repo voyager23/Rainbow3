@@ -7,9 +7,11 @@
 	#define __RAINBOW_H__
 	#include <stdint.h>
 	// thread blocks
-	#define DIMGRIDX 64
+	#define DIMGRIDX 32
 	// threads per block
-	#define THREADS  512
+	#define THREADS  1024
+	// Split the total work into Work Units to avoid kernel timeout
+	#define WORKUNITS 4
 	// Number of links in chain - defining characteristic of table.
 	#define LINKS 2048
 	// limit password to MAXLENGTH chars
@@ -19,7 +21,7 @@
 	// Maximum number of table names
 	#define MAXTABS 64
 	// number of table entries to calc
-	#define T_ENTRIES (DIMGRIDX*THREADS)
+	#define T_ENTRIES (WORKUNITS*DIMGRIDX*THREADS)
 
 	#define ROTR(a,b) (((a) >> (b)) | ((a) << (32-(b))))
 	#define CH(x,y,z) (((x) & (y)) ^ (~(x) & (z)))

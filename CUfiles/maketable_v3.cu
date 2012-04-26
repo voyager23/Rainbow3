@@ -9,6 +9,9 @@
 	* From the parameters in rainbow.h, maketable produces an unsorted
 	* table (new) and a table sorted on final hash (sorted). This is
 	* used for merging into the main table.
+	* 
+	* The kernel will time out if more than 34*1024 threads are launched.
+	* Defining 1 workunit as 32*1024 threads.
 	*
 */
 
@@ -64,7 +67,7 @@ static void HandleError( cudaError_t err,
 __host__
 void table_setup(TableHeader *header, TableEntry *entry) {
 	int i,di;
-	unsigned int t_size=sizeof(TableHeader)+(sizeof(TableEntry)*DIMGRIDX*THREADS);
+	unsigned int t_size=sizeof(TableHeader)+(sizeof(TableEntry)*T_ENTRIES);
 
 	srand(time(NULL));
 	printf("Threads: %d Table_Size: %d\n",THREADS,t_size);
@@ -82,7 +85,7 @@ void table_setup(TableHeader *header, TableEntry *entry) {
 		(entry+i)->final_hash[0] = 0x776f6272;
 	}
 	header->hdr_size = sizeof(TableHeader);
-	header->entries = THREADS*DIMGRIDX;
+	header->entries = T_ENTRIES;
 	header->links = LINKS;
 	header->f1 =  rand()%1000000000;	// Table Index
 	header->f2 = 0x3e3e3e3e;			// '>>>>'
@@ -91,7 +94,7 @@ void table_setup(TableHeader *header, TableEntry *entry) {
 	md5_byte_t digest[16];
 	
 	md5_init(&state);
-	for(i=0; i<THREADS*DIMGRIDX; i++)
+	for(i=0; i<T_ENTRIES; i++)
 		md5_append(&state, (const md5_byte_t *)&(entry[i]), sizeof(TableEntry));
 	md5_finish(&state, digest);
 
@@ -330,18 +333,19 @@ int main(int argc, char **argv) {
 	char table_file[81];
 	char sort_file[81];
 	FILE *table, *sort;
-	int i,di;
+	int i,di,work_unit;
+	uint32_t offset;
 	
 	
 
 	printf("maketable_v3.\n");
-	fname_gen(table_file,"new64",DIMGRIDX*THREADS);
+	fname_gen(table_file,"new64",T_ENTRIES);
 	table=fopen(table_file,"w");
 	if(table==NULL) {
 		printf("Error - maketable_v3: Unable to open table file.\n");
 		return(1);
 	}
-	fname_gen(sort_file,"sort64",DIMGRIDX*THREADS);
+	fname_gen(sort_file,"sort64",T_ENTRIES);
 	sort=fopen(sort_file,"w");
 	if(sort==NULL) {
 		printf("Error - maketable_v3: Unable to open sort file.\n");
@@ -349,34 +353,44 @@ int main(int argc, char **argv) {
 	}
 	
 	header = (TableHeader*)malloc(sizeof(TableHeader));
-	entry = (TableEntry*)malloc(sizeof(TableEntry)*DIMGRIDX*THREADS);
+	entry = (TableEntry*)malloc(sizeof(TableEntry)*T_ENTRIES);
 	if((header != NULL)&&(entry != NULL)) {
 
-		table_setup(header,entry);	// initialise header and set initial passwords
-		
-		
+		table_setup(header,entry);	// initialise header and set initial passwords		
 
-		// cudaMalloc spave for table header
-		HANDLE_ERROR(cudaMalloc((void**)&dev_header,sizeof(TableHeader)));
-		// cudaMalloc space for table body
-		HANDLE_ERROR(cudaMalloc((void**)&dev_entry,sizeof(TableEntry)*DIMGRIDX*THREADS));
-		
+		// cudaMalloc space for table header
+		HANDLE_ERROR(cudaMalloc((void**)&dev_header,sizeof(TableHeader)));				
 		// copy header to device
 		HANDLE_ERROR(cudaMemcpy(dev_header, header, sizeof(TableHeader), cudaMemcpyHostToDevice));
-		// Copy entries to device
-		HANDLE_ERROR(cudaMemcpy(dev_entry, entry, sizeof(TableEntry)*DIMGRIDX*THREADS, cudaMemcpyHostToDevice));
+		
+		// cudaMalloc space for 1 work unit in table body
+		HANDLE_ERROR(cudaMalloc((void**)&dev_entry,sizeof(TableEntry)*DIMGRIDX*THREADS));
+		
+		// .....workunit...loop start.....
+		for(work_unit=0; work_unit<WORKUNITS; work_unit++) {
+			
+			// track position in table of entries
+			offset = work_unit*DIMGRIDX*THREADS;
+			
+			// Copy entries to device
+			HANDLE_ERROR(cudaMemcpy(dev_entry, entry+offset, sizeof(TableEntry)*DIMGRIDX*THREADS, cudaMemcpyHostToDevice));
 
-		// =====Launch Kernel=====
-		table_calculate<<<DIMGRIDX,THREADS>>>(dev_header,dev_entry);
+			// =====Launch Kernel=====
+			table_calculate<<<DIMGRIDX,THREADS>>>(dev_header,dev_entry);
 
-		// copy back entries to host
-		HANDLE_ERROR( cudaMemcpy(entry, dev_entry, sizeof(TableEntry)*DIMGRIDX*THREADS, cudaMemcpyDeviceToHost) );
-		// copy back header to host
-		HANDLE_ERROR( cudaMemcpy(header, dev_header, sizeof(TableHeader), cudaMemcpyDeviceToHost) );
+			// copy back entries to host
+			HANDLE_ERROR( cudaMemcpy(entry+offset, dev_entry, sizeof(TableEntry)*DIMGRIDX*THREADS, cudaMemcpyDeviceToHost) );
+			// copy back header to host
+			HANDLE_ERROR( cudaMemcpy(header, dev_header, sizeof(TableHeader), cudaMemcpyDeviceToHost) );
 
-		// save table to file 'new table'
+			// save table to file 'new table'			
+			fwrite(entry+offset,sizeof(TableEntry),DIMGRIDX*THREADS,table);
+			
+			printf("Completed work unit %d\n",work_unit);
+			
+		} // .....workunit...loop end.....
+		
 		fwrite(header,sizeof(TableHeader),1,table);
-		fwrite(entry,sizeof(TableEntry),header->entries,table);
 		fclose(table);
 
 		// sort on hash value	
@@ -387,7 +401,7 @@ int main(int argc, char **argv) {
 		md5_byte_t digest[16];
 
 		md5_init(&state);
-		for(i=0; i<THREADS*DIMGRIDX; i++)
+		for(i=0; i<T_ENTRIES; i++)
 			md5_append(&state, (const md5_byte_t *)&(entry[i]), sizeof(TableEntry));
 		md5_finish(&state, digest);
 
