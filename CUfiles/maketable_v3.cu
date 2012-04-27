@@ -68,10 +68,10 @@ static void HandleError( cudaError_t err,
 __host__
 void table_setup(TableHeader *header, TableEntry *entry) {
 	int i,di;
-	unsigned int t_size=sizeof(TableHeader)+(sizeof(TableEntry)*T_ENTRIES);
+	//unsigned int t_size=sizeof(TableHeader)+(sizeof(TableEntry)*T_ENTRIES);
 
 	srand(time(NULL));
-	printf("Threads: %d Table_Size: %d\n",THREADS,t_size);
+	//printf("Threads: %d Table_Size: %d\n",THREADS,t_size);
 	for(i=0; i<THREADS*DIMGRIDX; i++) {
 		// Random password type 'UUnnllU'
 		(entry+i)->initial_password[0]= (rand() % 26) + 'A';
@@ -100,9 +100,9 @@ void table_setup(TableHeader *header, TableEntry *entry) {
 	md5_finish(&state, digest);
 
 	// print md5sum for test purposes
-	for (di = 0; di < 16; ++di)
-		printf("%02x", digest[di]);
-	printf("\n");
+	//for (di = 0; di < 16; ++di)
+		//printf("%02x", digest[di]);
+	//printf("\n");
 
 	// Save the md5sum in check_sum slot
 	for (di = 0; di < 16; ++di)
@@ -324,6 +324,16 @@ void table_calculate(TableHeader *header, TableEntry *entry) {
 	__syncthreads();
 }
 
+void Check_CUDA_Error(const char *message,FILE *table, char *fname) {
+	cudaError_t error = cudaGetLastError();
+	if(error!=cudaSuccess) {
+	fprintf(stderr,"ERROR: %s: %s\n", message, cudaGetErrorString(error) );
+	fprintf(stderr,"Removing invalid _new64_ file in rbt.\n");
+	fclose(table);
+	remove(fname);
+	exit(1);
+	}
+}
 //=================================Main Code============================
 
 int main(int argc, char **argv) {
@@ -335,7 +345,10 @@ int main(int argc, char **argv) {
 	FILE *table, *sort;
 	int i,di,work_unit;
 	uint32_t offset;
-	
+
+	cudaEvent_t start;
+	cudaEvent_t end;
+	float ms;
 	
 
 	printf("maketable_v3.\n");
@@ -343,12 +356,6 @@ int main(int argc, char **argv) {
 	table=fopen(table_file,"w");
 	if(table==NULL) {
 		printf("Error - maketable_v3: Unable to open table file.\n");
-		return(1);
-	}
-	fname_gen(sort_file,"sort64",T_ENTRIES);
-	sort=fopen(sort_file,"w");
-	if(sort==NULL) {
-		printf("Error - maketable_v3: Unable to open sort file.\n");
 		return(1);
 	}
 	
@@ -367,11 +374,11 @@ int main(int argc, char **argv) {
 		// cudaMalloc space for 1 work unit in table body
 		HANDLE_ERROR(cudaMalloc((void**)&dev_entry,sizeof(TableEntry)*DIMGRIDX*THREADS));
 		
+		cudaEventCreate(&start);
+		cudaEventCreate(&end);
+		printf("Starting the work loop.\n");
 		// .....workunit...loop start.....
-		for(work_unit=0; work_unit<WORKUNITS; work_unit++) {
-			
-			printf("Starting work unit %d.\n", work_unit);
-			sleep(1);	// pause the loop to allow output
+		for(work_unit=0; work_unit<WORKUNITS; work_unit++) {			
 			
 			// track position in table of entries
 			offset = work_unit*DIMGRIDX*THREADS;
@@ -380,21 +387,25 @@ int main(int argc, char **argv) {
 			HANDLE_ERROR(cudaMemcpy(dev_entry, entry+offset, sizeof(TableEntry)*DIMGRIDX*THREADS, cudaMemcpyHostToDevice));
 
 			// =====Launch Kernel=====
+			cudaEventRecord(start,0);
+			cudaGetLastError();	// Clear cuda error flag
 			table_calculate<<<DIMGRIDX,THREADS>>>(dev_header,dev_entry);
+			cudaEventRecord(end,0);
+			cudaEventSynchronize(end);			
+			cudaEventElapsedTime(&ms,start,end);
+			printf("Work unit %d completed in %4.2f ms.\n", work_unit,ms);
+			
+			Check_CUDA_Error("Error thrown after kernel launch",table,table_file);
 
 			// copy back entries to host
 			HANDLE_ERROR( cudaMemcpy(entry+offset, dev_entry, sizeof(TableEntry)*DIMGRIDX*THREADS, cudaMemcpyDeviceToHost) );
 			// copy back header to host
-			HANDLE_ERROR( cudaMemcpy(header, dev_header, sizeof(TableHeader), cudaMemcpyDeviceToHost) );
-
-			// save table to file 'new table'			
-			fwrite(entry+offset,sizeof(TableEntry),DIMGRIDX*THREADS,table);
-			
-			
+			HANDLE_ERROR( cudaMemcpy(header, dev_header, sizeof(TableHeader), cudaMemcpyDeviceToHost) );			
 			
 		} // .....workunit...loop end.....
 		
 		fwrite(header,sizeof(TableHeader),1,table);
+		fwrite(entry,sizeof(TableEntry),T_ENTRIES,table);		
 		fclose(table);
 
 		// sort on hash value	
@@ -418,19 +429,18 @@ int main(int argc, char **argv) {
 		// Save the md5sum in check_sum slot
 		for (di = 0; di < 16; ++di)
 	    sprintf(header->check_sum + di * 2, "%02x", digest[di]);
-
+	    
+	    // Open the sort file for writing
+	    fname_gen(sort_file,"sort64",T_ENTRIES);
+		sort=fopen(sort_file,"w");
+		if(sort==NULL) {
+			printf("Error - maketable_v3: Unable to open sort file.\n");
+			return(1);
+		}
 		// save sorted table to file 'sorted table'
 		fwrite(header,sizeof(TableHeader),1,sort);
 		fwrite(entry,sizeof(TableEntry),header->entries,sort);
 		fclose(sort);
-
-		// DEBUG: display entries from table
-		//int idx;
-		//for(idx=0; idx < DIMGRIDX*THREADS; idx++) {
-			//printf("\nEntry[%d]:%s \nFinal Hash: ",idx,(entry+idx)->initial_password);
-			//for(i=0;i<8;i++) printf("%08x ",(entry+idx)->final_hash[i]);
-			//printf("\nLinks: %d\n",LINKS);				
-		//}
 
 	}
 	// Clean up memory
