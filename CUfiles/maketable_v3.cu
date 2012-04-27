@@ -352,8 +352,9 @@ int main(int argc, char **argv) {
 	
 
 	printf("maketable_v3.\n");
-	fname_gen(table_file,"new64",T_ENTRIES);
-	table=fopen(table_file,"w");
+	fname_gen(sort_file,"sort64",T_ENTRIES);	// determine the filenames
+	fname_gen(table_file,"new64",T_ENTRIES);	// at the same time so tmerge
+	table=fopen(table_file,"w");				// can delete the unrequired files.
 	if(table==NULL) {
 		printf("Error - maketable_v3: Unable to open table file.\n");
 		return(1);
@@ -431,7 +432,6 @@ int main(int argc, char **argv) {
 	    sprintf(header->check_sum + di * 2, "%02x", digest[di]);
 	    
 	    // Open the sort file for writing
-	    fname_gen(sort_file,"sort64",T_ENTRIES);
 		sort=fopen(sort_file,"w");
 		if(sort==NULL) {
 			printf("Error - maketable_v3: Unable to open sort file.\n");

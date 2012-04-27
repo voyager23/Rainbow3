@@ -7,7 +7,7 @@
 	#define __RAINBOW_H__
 	#include <stdint.h>
 	// thread blocks - Note Max value 28 to avoid kernel timeout
-	#define DIMGRIDX 28
+	#define DIMGRIDX 24
 	// threads per block
 	#define THREADS  1024
 	// Split the total work into Work Units to avoid kernel timeout
