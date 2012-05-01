@@ -158,10 +158,8 @@ int tmerge(char *sort){
 		r2=fwrite(ent_merge,sizeof(TableEntry),entries_merged,fp_merge);
 		fclose(fp_merge);
 		if((r1==1)&&(r2==entries_merged)) {
-			printf("Removing the original sorted table file.\n");
+			printf("Removing and renaming merge files.\n");
 			remove(sort);	// not required anymore
-			printf("Removing the original new table file.\n");
-			remove(sort2new(sort));
 			
 			// remove previous merge.rbt.sav ...
 			remove(rbt_sav);
@@ -170,7 +168,6 @@ int tmerge(char *sort){
 			rename(merge, rbt_sav);
 			
 			// rename _merge.rbt.new to _merge.rbt
-			printf("Renaming new merge file to _merge.rbt\n");
 			rename(new_merge, merge);
 			
 			error_flag=0;
@@ -187,8 +184,9 @@ int tmerge(char *sort){
 	free(hdr_merge);
 	free(hdr_right);
 	free(hdr_left);	
-	// final actions		
-	printf("Merged %d entries and discarded %d.\n",entries_merged,discarded);
+	// final actions
+	printf("Incorporated %d entries from %d.",(hdr_right->entries-discarded),hdr_right->entries);
+	printf("Merge file contains %d entries.\n",entries_merged);
 	return(error_flag);
 }
 

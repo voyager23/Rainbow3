@@ -350,6 +350,8 @@ int main(int argc, char **argv) {
 	cudaEvent_t end;
 	float ms;
 	
+	size_t count;
+	
 
 	printf("maketable_v3.\n");
 	fname_gen(sort_file,"sort64",T_ENTRIES);	// determine the filenames
@@ -377,7 +379,7 @@ int main(int argc, char **argv) {
 		
 		cudaEventCreate(&start);
 		cudaEventCreate(&end);
-		printf("Starting the work loop.\n");
+		printf("Starting the first of %d work units....\n",WORKUNITS);
 		// .....workunit...loop start.....
 		for(work_unit=0; work_unit<WORKUNITS; work_unit++) {			
 			
@@ -438,10 +440,16 @@ int main(int argc, char **argv) {
 			return(1);
 		}
 		// save sorted table to file 'sorted table'
-		fwrite(header,sizeof(TableHeader),1,sort);
-		fwrite(entry,sizeof(TableEntry),header->entries,sort);
-		fclose(sort);
-
+		count =  fwrite(header,sizeof(TableHeader),1,sort);
+		count += fwrite(entry,sizeof(TableEntry),header->entries,sort);
+		if((count == header->entries + 1)&&(fclose(sort)==0)) {
+			// ok to remove 'new64' file
+			printf("Sorted file successfully writen - deleting original.\n");
+			if( remove( table_file ) != 0 )
+				perror( "Error deleting file" );
+			else
+				puts( "File successfully deleted" );
+		}
 	}
 	// Clean up memory
 	free(header);
