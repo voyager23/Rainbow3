@@ -6,12 +6,16 @@
 #ifndef __RAINBOW_H__
 	#define __RAINBOW_H__
 	#include <stdint.h>
+	
+	// Define the current table-identification
+	#define TABLEIDENT 0
+	
 	// thread blocks - Note Max value 28 to avoid kernel timeout
 	#define DIMGRIDX 28
 	// threads per block
 	#define THREADS  1024
 	// Split the total work into Work Units to avoid kernel timeout
-	#define WORKUNITS 16
+	#define WORKUNITS 1
 	// Number of links in chain - defining characteristic of table.
 	#define LINKS 2048
 	// limit password to MAXLENGTH chars

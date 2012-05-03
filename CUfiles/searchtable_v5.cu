@@ -83,7 +83,7 @@ void kernel(TableHeader *header, TableEntry *entry) {
 		while(count > 0) {
 			// Reduce hash to zero terminated password in B
 			// Use freduce.cu
-			reduce_hash(H,B,reduction_idx);
+			reduce_hash(H,B,reduction_idx,TABLEIDENT);
 
 			// copy zero terminated string from B to M and note length
 			in = B;
@@ -173,8 +173,7 @@ int main(int argc, char **argv) {
 	printf("This is searchtable_v5 (cuda).\n");
 	printf("Search a merged Rainbow Table for a selected password.\n\n");
 	
-	// Get-set options here
-	    
+	// Get-set options here	    
 	while ((c = getopt (argc, argv, "n:r")) != -1)
 	switch (c) {
 		case 'n':
@@ -186,6 +185,21 @@ int main(int argc, char **argv) {
 		default:
 			printf("Error in getopt - stopping.\n");
 			exit(1);
+	}
+	
+	// Non-option parameter path/to/rbow/table
+	if(argv[optind]==NULL) {
+		printf("Usage:search [-n [trials] ] [-r] path/to/rbow/tab.rbt\n");
+		exit(1);
+	} else {
+		strncpy(rbt_file,argv[optind],127);
+		if(fopen(rbt_file,"r")==NULL) {
+			printf("Error: Unable to open %s for reading.\n",rbt_file);
+			exit(1);
+		} else {
+			// rbt_file now has table to consult
+			printf("Path to Rbow Tab: %s\n",rbt_file);
+		}
 	}
 	
 	// Sanity checks. In this case assert (LINKS % THREADS)==0
@@ -208,7 +222,7 @@ int main(int argc, char **argv) {
 			// get test data - this is a known password/hash pair
 			// from the main table	
 			srand(time(NULL));
-			fp_rbow = fopen("./rbt/RbowTab_merge.rbt","r");
+			fp_rbow = fopen(rbt_file,"r");
 			get_rnd_table_entry(target, fp_rbow);
 			fclose(fp_rbow);
 			printf("Using Known target.\n");
@@ -264,76 +278,75 @@ int main(int argc, char **argv) {
 		}
 		printf("Now looking for a valid solution\n");
 		// look for a valid solution
-		while((fscanf(fp_tables,"%s",rbt_file)) != EOF) {
-			fp_rbow = fopen(rbt_file,"r");
-			if(fp_rbow==NULL) {
-				printf("Error - unable to open %s\n",rbt_file);
-				exit(1);
-			} else {
-				printf("\nUsing table %s\n", rbt_file);
-			}
-			header = (TableHeader*)malloc(sizeof(TableHeader));
-			fread(header,sizeof(TableHeader),1,fp_rbow);
-			entry = (TableEntry*)malloc(sizeof(TableEntry)*header->entries);
-			fread(entry,sizeof(TableEntry),header->entries,fp_rbow);
-			fclose(fp_rbow);
-			
-			// try to match a subchain final_hash against final_hash in main table
-			// if match found - report chain_index and link_index.
-			printf("Looking for a matching chain...\n");
-			collisions=0;
-			
-			check = (TableEntry*)malloc(sizeof(TableEntry)*(LINKS));
-			for(i=0;i<LINKS;i++) {				
-				// left points to candidate
-				// left = (subchain_entry+i)->final_hash;
-				// right points to merged table ordered by ascending final_hash
-				// right = (entry+di)->final_hash;
-				/*
-				 * if compare == 1,  candidate > merged, continue
-				 * if compare == -1, candidate < merged, break
-				 */			
-				compare = (TableEntry*)bsearch((subchain_entry+i), entry,
-					header->entries, sizeof(TableEntry), hash_compare_32bit );
+		fp_rbow = fopen(rbt_file,"r");
+		if(fp_rbow==NULL) {
+			printf("Error - unable to open %s\n",rbt_file);
+			exit(1);
+		} else {
+			printf("\nUsing table %s\n", rbt_file);
+		}
+		
+		header = (TableHeader*)malloc(sizeof(TableHeader));
+		fread(header,sizeof(TableHeader),1,fp_rbow);
+		entry = (TableEntry*)malloc(sizeof(TableEntry)*header->entries);
+		fread(entry,sizeof(TableEntry),header->entries,fp_rbow);
+		fclose(fp_rbow);
+		
+		// try to match a subchain final_hash against final_hash in main table
+		// if match found - report chain_index and link_index.
+		printf("Looking for a matching chain...\n");
+		collisions=0;
+		
+		check = (TableEntry*)malloc(sizeof(TableEntry)*(LINKS));
+		for(i=0;i<LINKS;i++) {				
+			// left points to candidate
+			// left = (subchain_entry+i)->final_hash;
+			// right points to merged table ordered by ascending final_hash
+			// right = (entry+di)->final_hash;
+			/*
+			 * if compare == 1,  candidate > merged, continue
+			 * if compare == -1, candidate < merged, break
+			 */			
+			compare = (TableEntry*)bsearch((subchain_entry+i), entry,
+				header->entries, sizeof(TableEntry), hash_compare_32bit );
 
-				if(compare!=NULL) {
-					// Forward calculate the chain (entry+di) to (possibly) recover 
-					// the password/hash pair.
-					strcpy(check->initial_password,compare->initial_password);							
-					compute_chain(check,i+1);			
-					if(hash_compare_uint32_t((target)->final_hash,(check+i)->final_hash)==0) {
-						printf("\033[32m");
-						printf("\n=====SOLUTION FOUND=====\n%s\n",(check+i)->initial_password);
-						for(dx=0;dx<8;dx++) printf("%08x ", (target)->final_hash[dx]);
-						printf("\033[0m");
-						solutions++;
-						free(check);
-						free(entry);
-						free(header);
-						goto found;
-					} else { 
-						collisions++; 
-					}
-					//free(check);				 
+			if(compare!=NULL) {
+				// Forward calculate the chain (entry+di) to (possibly) recover 
+				// the password/hash pair.
+				strcpy(check->initial_password,compare->initial_password);							
+				compute_chain(check,i+1);			
+				if(hash_compare_uint32_t((target)->final_hash,(check+i)->final_hash)==0) {
+					printf("\033[32m");
+					printf("\n=====SOLUTION FOUND=====\n%s\n",(check+i)->initial_password);
+					for(dx=0;dx<8;dx++) printf("%08x ", (target)->final_hash[dx]);
+					printf("\033[0m");
+					solutions++;
+					free(check);
+					free(entry);
+					free(header);
+					goto found;
 				} else { 
-				} // if (compare)				
-			} // for(i=0; ...)
-			if(i==LINKS) {
-				printf("\033[31m");
-				printf("\n=====No solution found for this hash=====\n");
-				for(dx=0;dx<8;dx++) printf("%08x ", (target)->final_hash[dx]);
-				printf("\033[0m");
-			}
-			free(check);		
-			free(entry);
-			free(header);
-		} // while !EOF
+					collisions++; 
+				}
+				//free(check);				 
+			} else { 
+			} // if (compare)				
+		} // for(i=0; ...)
+		if(i==LINKS) {
+			printf("\033[31m");
+			printf("\n=====No solution found for this hash=====\n");
+			for(dx=0;dx<8;dx++) printf("%08x ", (target)->final_hash[dx]);
+			printf("\033[0m");
+		}
+		free(check);		
+		free(entry);
+		free(header);
+		// end valid solution search
 		found:
 		// next two free() moved outside loop
-			free(subchain_header);
-			free(subchain_entry);
-		// end move
-		printf("\nThis run had %d collisions.\n\n",collisions);
+		free(subchain_header);
+		free(subchain_entry);
+		printf("\nThis trial had %d collisions.\n\n",collisions);
 		// free memory and file handles 
 		fclose(fp_tables);
 	}

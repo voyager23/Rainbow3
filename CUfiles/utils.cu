@@ -52,6 +52,9 @@ int get_rnd_table_entry(TableEntry *target, FILE * fp) {
 	// allocate and read header
 	header = (TableHeader*)malloc(sizeof(TableHeader));
 	fread(header,sizeof(TableHeader),1,fp);
+	
+	show_table_header(header);
+	
 	// allocate space for a full chain
 	chain = (TableEntry*)malloc(sizeof(TableEntry)*LINKS);
 	// set initial_password of chain to randomly selected
@@ -60,8 +63,12 @@ int get_rnd_table_entry(TableEntry *target, FILE * fp) {
 		fread(chain,sizeof(TableEntry),1,fp);
 	// randomly select a link and calculate pass/hash pair
 	link = (rand() % LINKS)+1;
+	
+	show_table_entries(chain,0,2);
+	
 	compute_chain(chain,link);
 	// display result
+	printf("From chain commencing %s and at link %d:\n", chain->initial_password, link-1);
 	printf("\nRandomly selected chain data.\nPassword: %s\nHash: ", (chain+link-1)->initial_password);
 	for(dx=0;dx<8;dx++) printf("%08x ", (chain+link-1)->final_hash[dx]);
 	printf("\n");
@@ -235,7 +242,7 @@ void compute_chain(TableEntry *entry, int links) {
 		}
 
 		// Reduce the Hash and store in B using reduce_hash function		
-		(void)reduce_hash(H,B,link_idx);
+		(void)reduce_hash(H,B,link_idx,TABLEIDENT);
 
 	} // for link_idx=0 ...
 

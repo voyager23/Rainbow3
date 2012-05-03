@@ -38,6 +38,10 @@
 #include "tmerge.h"
 	
 // ------Definitions-----
+
+// include the code for generating filenames
+#include "fname_gen.cu"
+
 int tmerge(char *sort){
 	
 	TableHeader *hdr_left, *hdr_right, *hdr_merge;
@@ -46,11 +50,20 @@ int tmerge(char *sort){
 	unsigned entries_total, entries_merged, entries_count, discarded;
 	int compare,r1,r2,error_flag;
 	
-	const char *merge = "./rbt/RbowTab_merge.rbt";
-	const char *new_merge = "./rbt/RbowTab_merge.rbt.new";
-	const char *rbt_sav = "./rbt/RbowTab_merge.rbt.sav";
+	//========REPLACE=====================================
+	// const char *merge = "./rbt/RbowTab_merge.rbt";
+	// const char *new_merge = "./rbt/RbowTab_merge.rbt.new";
+	// const char *rbt_sav = "./rbt/RbowTab_merge.rbt.sav";
+	//+++++++++++++++++++++++++++++++++++++++++++++++++++++
 	
+	char merge[128];
+	char new_merge[128];
+	char rbt_sav[128];	
 	FILE *fp_left, *fp_right, *fp_merge;
+	
+	fname_gen(merge,"merge",TABLEIDENT);
+	fname_gen(new_merge,"new_merge",TABLEIDENT);
+	fname_gen(rbt_sav,"rbt_save",TABLEIDENT);
 	
 	// check that the original merged file is valid for reading (fp_left)
 	fp_left = fopen(merge,"r");
@@ -205,10 +218,11 @@ int hash_compare_uint32_t(uint32_t *left, uint32_t *right) {
 
 int filter(const struct dirent* dp) {
 	const char *posn;
-	posn = strstr(dp->d_name, "RbowTab_sort64_" );
+	posn = strstr(dp->d_name, "sort_" );
 	return((posn != NULL));
 }
 
+#if(0)
 char *sort2new(char *buffer) {
 	char *pch;
 	typedef char Elem[64];
@@ -222,6 +236,7 @@ char *sort2new(char *buffer) {
 	sprintf(buffer,"%s_new64_%s_%s",parts[0],parts[2],parts[3]);
 	return(buffer);
 }
+#endif
 
 // ------Main Code------
 

@@ -12,14 +12,16 @@
 char *rbowtab_tables = "./rbt/RbowTab_tables_0.rbt";
 
 __host__
-void fname_gen(char *buffer, char *type_str, int dim) {
-	const char *root = "./rbt/RbowTab";
+void fname_gen(char *buffer, char *type_str, uint32_t tid) {
+	// now takes table_id as paramter
+	// output form: ./rbt/merge_
+	const char *root = "./rbt/";
 	const char *rbt  = "rbt";
-	char dimension[64];
+	char table_id[64];
 	time_t now;
 	time(&now);
-	sprintf(dimension,"%d",dim);
-	sprintf(buffer,"%s_%s_%s_%d.%s",root,type_str,dimension,(int)now,rbt);
+	sprintf(table_id,"%d",tid);
+	sprintf(buffer,"%s%s_%s.%s",root,type_str,table_id,rbt);
 }
 
 __host__

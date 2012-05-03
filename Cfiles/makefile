@@ -16,6 +16,9 @@ csearch : $(objs)
 	
 #-----------------------------------------------------------------------
 
+single : $(objs)
+	gcc single_chain.c freduce.c fname_gen.c -o ./bin/single
+
 thisto : $(objs)
 	gcc -Wall -lm thisto.c $^ -o ./bin/$@
 	
