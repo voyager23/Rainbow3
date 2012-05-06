@@ -14,6 +14,7 @@ UCA=0x41
 LCA=0x61
 NUM=0x31
 CHAIN_IDX=0
+TABLE_ID=3
 INITIAL=AB12cdE
 LINKS=8
 MASK=0xffff
@@ -41,7 +42,7 @@ do
 	# convert hex to dec
 	Z=`echo $((0x$Z))`
 	#echo "decimal Z:$Z"
-	Z=$(( Z + CHAIN_IDX ))
+	Z=$(( Z + CHAIN_IDX + TABLE_ID ))
 	#echo "Plus chain idx:$Z"
 
 	# ----- Get two upper case letters -----
@@ -77,7 +78,7 @@ do
 	# convert hex to dec
 	Z=`echo $((0x$Z))`
 	#echo "decimal Z:$Z"
-	Z=$(( Z + CHAIN_IDX ))
+	Z=$(( Z + CHAIN_IDX + TABLE_ID ))
 	#echo "Plus chain idx:$Z"
 
 	B2=$((Z & $MASK ))
@@ -109,7 +110,7 @@ do
 	# convert hex to dec
 	Z=`echo $((0x$Z))`
 	#echo "decimal Z:$Z"
-	Z=$(( Z + CHAIN_IDX ))
+	Z=$(( Z + CHAIN_IDX + TABLE_ID ))
 	#echo "Plus chain idx:$Z"
 
 	B4=$((Z & $MASK ))
@@ -141,7 +142,7 @@ do
 	# convert hex to dec
 	Z=`echo $((0x$Z))`
 	#echo "decimal Z:$Z"
-	Z=$(( Z + CHAIN_IDX ))
+	Z=$(( Z + CHAIN_IDX + TABLE_ID ))
 	#echo "Plus chain idx:$Z"
 
 	B6=$((Z & $MASK ))

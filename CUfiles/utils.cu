@@ -170,7 +170,7 @@ void compute_chain(TableEntry *entry, int links) {
 	int i;			// working index
 	uint64_t l = 0; // length of message
 	uint8_t  B[64];	// store initial and working trials here to protect original data
-	uint link_idx;	// index
+	uint32_t link_idx;	// index
 
 	// copy zero terminated string into B buffer
 	i=0;
@@ -242,7 +242,7 @@ void compute_chain(TableEntry *entry, int links) {
 		}
 
 		// Reduce the Hash and store in B using reduce_hash function		
-		(void)reduce_hash(H,B,link_idx,TABLEIDENT);
+		(void)reduce_hash(H,B,(link_idx+TABLEIDENT));
 
 	} // for link_idx=0 ...
 

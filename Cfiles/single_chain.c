@@ -17,8 +17,8 @@
 #include <string.h>
 #include <endian.h>
 
-#include "rainbow.h"
-//#include "table_utils.h"
+#include "../common/rainbow.h"
+
 #include "fname_gen.h"
 #include "freduce.h"
 //----------------------------------------------------------------------
@@ -167,9 +167,7 @@ void compute_chain_dev(TableEntry *entry, int links)
 		for(i=16;i<64;i++) W[i] = SIG1(W[i-2]) + W[i-7] + SIG0(W[i-15]) + W[i-16];
 	
 		// set initial hash values
-		initHash(H);
-		
-		
+		initHash(H);		
 			
 		// Now calc the hash
 		sha256_transform(W,H);
@@ -180,7 +178,7 @@ void compute_chain_dev(TableEntry *entry, int links)
 		}
 
 		// Reduce the Hash and store in B using reduce_hash function		
-		reduce_hash(H,B,chain_idx,TABLEIDENT);
+		reduce_hash(H,B,(chain_idx+TABLEIDENT));
 
 	} // for chain_idx=0 ...
 
@@ -247,17 +245,20 @@ int main(int argc, char **argv) {
 	} else {
 		printf("Failed to write results to %s\n", buffer);
 	}
-
-#if 1		
-	// Display table
 	int di;
+#if(0)		
+	// Display table	
 	for(i=0; i<link_count; i++) {
 		printf("Link %d: Password: %s \nHash %d: ", i, (entry+i)->initial_password,i);
 		for(di=0;di<8;di++) printf("%08x ", (entry+i)->final_hash[di]);
 		printf("\n");
 	}
+#else
+	printf("Link %d: Password: %s \nHash %d: ", i, (entry+link_count-1)->initial_password,i);
+	for(di=0;di<8;di++) printf("%08x ", (entry+link_count-1)->final_hash[di]);
+	printf("\n");	
 #endif
-	
+	printf("TABLEIDENT: %u\n",TABLEIDENT);
 	// Cleanup
 	free(entry);
 	free(header);

@@ -6,18 +6,19 @@
 #ifdef __CUDA__ 
 __device__ __host__
 #endif
-void reduce_hash(uint32_t H[], uint8_t B[], int link_idx, uint32_t tab_id);
+void reduce_hash(uint32_t H[], uint8_t B[], uint32_t link_idx);
+
 //======================================================================
 #ifdef __CUDA__ 
 __device__ __host__
 #endif
-void reduce_hash(uint32_t H[], uint8_t B[], int link_idx, uint32_t tab_id) {
+void reduce_hash(uint32_t H[], uint8_t B[], uint32_t link_idx) {
 
 		uint32_t z;
 		uint16_t b0,b1;
 		const uint16_t mask = 0xffff;
 		
-		uint32_t offset = (link_idx+tab_id);
+		uint32_t offset = link_idx;
 		
 		z = H[0] + offset;
 		b0 = (uint16_t)(z & mask);

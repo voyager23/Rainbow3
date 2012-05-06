@@ -31,10 +31,10 @@
 #include <time.h>
 #include <unistd.h>
 // local header files
-#include "rainbow.h"
+#include "../common/rainbow.h"
 #include "fname_gen.h"
 #include "md5.h"
-// reduce function cuda code
+// reduce function cuda header and code
 #include "freduce.cu"
 
 //======================================================================
@@ -83,8 +83,10 @@ void table_setup(TableHeader *header, TableEntry *entry) {
 		(entry+i)->initial_password[5]= (rand() % 26) + 'a';
 		(entry+i)->initial_password[6]= (rand() % 26) + 'A';
 		(entry+i)->initial_password[7]= '\0';
-		// DEBUG
+		
+		// DEBUG Remove either or both for operational use
 		(entry+i)->final_hash[0] = 0x776f6272;
+		// END DEBUG
 	}
 	header->hdr_size = sizeof(TableHeader);
 	header->entries = T_ENTRIES;
@@ -232,7 +234,7 @@ void table_calculate(TableHeader *header, TableEntry *entry) {
 	int i = 0;		// working index
 	uint64_t l = 0; // length of message
 	uint8_t  B[64];	// store initial and working passwords here to protect original data
-	uint chain_idx, link_idx;
+	uint32_t chain_idx, link_idx;
 
 	// set up a pointer to initial_password & final_hash
 	TableEntry *data = entry + blockIdx.x*blockDim.x + threadIdx.x;
@@ -307,10 +309,13 @@ void table_calculate(TableHeader *header, TableEntry *entry) {
 		// link_idx = chain_idx + 0;
 
 		// Reduce the Hash using the table_ident
-		link_idx = chain_idx + header->f1;
+		
+		//???????????????????????????????????????????????
+		link_idx = chain_idx + TABLEIDENT;
+		//???????????????????????????????????????????????
 		
 		// call reduce function
-		reduce_hash(H,B,link_idx,TABLEIDENT);
+		reduce_hash(H,B,link_idx);
 		
 		// TODO: remove???? clear internal index
 		i=0;
@@ -354,6 +359,7 @@ int main(int argc, char **argv) {
 	
 
 	printf("maketable_v4.\n");
+	
 	fname_gen(sort_file,"sort",TABLEIDENT);		// determine the filenames
 	fname_gen(table_file,"new",TABLEIDENT);		// at the same time so tmerge
 	table=fopen(table_file,"w");				// can delete the unrequired files.
@@ -448,11 +454,12 @@ int main(int argc, char **argv) {
 			// ok to remove 'new' file
 			printf("Sorted file successfully writen - deleting original.\n");
 			if( remove( table_file ) != 0 )
-				perror( "Error deleting file" );
+				perror( "Error deleting file\n" );
 			else
-				printf( "File successfully deleted" );
+				printf( "File successfully deleted\n" );
 		}
 	}
+	printf("TABLEIDENT: %u	sort_file %s\n",TABLEIDENT,sort_file);
 	// Clean up memory
 	free(header);
 	free(entry);

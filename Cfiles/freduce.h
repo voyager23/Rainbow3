@@ -15,7 +15,7 @@ extern "C"
 #ifdef __CUDA__ 
 __device__ 
 #endif
-void reduce_hash(uint32_t H[], uint8_t B[], int link_idx, uint32_t tab_id);
+void reduce_hash(uint32_t H[], uint8_t B[], uint32_t link_idx);
 //======================================================================
 #ifdef __cplusplus
 }

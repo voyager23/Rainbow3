@@ -8,10 +8,10 @@
 	#include <stdint.h>
 	
 	// Define the current table-identification
-	#define TABLEIDENT 0
+	#define TABLEIDENT 903975
 	
 	// thread blocks - Note Max value 28 to avoid kernel timeout
-	#define DIMGRIDX 28
+	#define DIMGRIDX 1
 	// threads per block
 	#define THREADS  1024
 	// Split the total work into Work Units to avoid kernel timeout
@@ -60,7 +60,7 @@
 		unsigned int entries; 	// Number of table entries
 		unsigned int links;		// Number of links in a chain
 		unsigned int f1;		// Table Index
-		unsigned int f2;		// unused
+		unsigned int f2;		// >>>> marker - not used
 	} TableHeader;
 
 	typedef struct tentry {

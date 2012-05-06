@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <string.h>
-#include "rainbow.h"
+#include "../common/rainbow.h"
 
 __host__ void fname_gen(char*,char*,uint32_t);	//output format changed
 __host__ int fname_read(char*);

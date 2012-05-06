@@ -16,7 +16,7 @@ thisto : $(objs)
 search: $(objs)
 	nvcc searchtable_v5.cu -o ./bin/search
 	
-mktab : maketable_v4.cu $(objs)
+mktab : maketable_v4.cu freduce.cu fname_gen.cu md5.cu
 	nvcc maketable_v4.cu ./obj/fname_gen.o ./obj/md5.o -o ./bin/mktab
 
 tmerge : tmerge.cu $(objs)

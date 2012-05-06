@@ -9,6 +9,7 @@
 #include "rainbow.h"
 
 // This file is a list of 'zero-term' filenames
+
 char *rbowtab_tables = "./rbt/RbowTab_tables_0.rbt";
 
 __host__

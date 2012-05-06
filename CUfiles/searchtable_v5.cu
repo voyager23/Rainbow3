@@ -14,7 +14,7 @@
 
 //===========================Include headers===============================
 
-#include "rainbow.h"
+#include "../common/rainbow.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -83,7 +83,7 @@ void kernel(TableHeader *header, TableEntry *entry) {
 		while(count > 0) {
 			// Reduce hash to zero terminated password in B
 			// Use freduce.cu
-			reduce_hash(H,B,reduction_idx,TABLEIDENT);
+			reduce_hash(H,B,(reduction_idx+TABLEIDENT));
 
 			// copy zero terminated string from B to M and note length
 			in = B;
@@ -220,15 +220,16 @@ int main(int argc, char **argv) {
 		if(rand_pass == 0) {
 			// Using known data
 			// get test data - this is a known password/hash pair
-			// from the main table	
+			// from the main table
+			printf("Using Known target.\n");
 			srand(time(NULL));
 			fp_rbow = fopen(rbt_file,"r");
 			get_rnd_table_entry(target, fp_rbow);
 			fclose(fp_rbow);
-			printf("Using Known target.\n");
+			
 		} else {
-			make_rnd_target(target);
 			printf("Using Random target.\n");
+			make_rnd_target(target);
 		}		
 		
 		// confirmation	of target

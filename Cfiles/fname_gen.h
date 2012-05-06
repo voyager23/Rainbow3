@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <string.h>
-#include "rainbow.h"
+#include "../common/rainbow.h"
 
 
 void fname_gen(char*,char*,int);
