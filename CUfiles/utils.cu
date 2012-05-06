@@ -46,9 +46,7 @@ int get_rnd_table_entry(TableEntry *target, FILE * fp) {
 	unsigned chain_idx,link,dx;
 	TableHeader *header;
 	TableEntry  *chain;
-	
-	// randomise
-	srand(time(NULL));
+
 	// allocate and read header
 	header = (TableHeader*)malloc(sizeof(TableHeader));
 	fread(header,sizeof(TableHeader),1,fp);
@@ -62,10 +60,7 @@ int get_rnd_table_entry(TableEntry *target, FILE * fp) {
 	for(chain_idx=0; chain_idx<=(rand() % header->entries); chain_idx++) 
 		fread(chain,sizeof(TableEntry),1,fp);
 	// randomly select a link and calculate pass/hash pair
-	link = (rand() % LINKS)+1;
-	
-	show_table_entries(chain,0,2);
-	
+	link = (rand() % LINKS)+1;	
 	compute_chain(chain,link);
 	// display result
 	printf("From chain commencing %s and at link %d:\n", chain->initial_password, link-1);
@@ -88,7 +83,6 @@ __host__
 void make_rnd_target(TableEntry *target) {
 	// generate a random password.
 	// calculate the associated hash and store in 'target'
-	srand(time(NULL));
 	// Random password type 'UUnnllU'
 	target->initial_password[0]= (rand() % 26) + 'A';
 	target->initial_password[1]= (rand() % 26) + 'A';

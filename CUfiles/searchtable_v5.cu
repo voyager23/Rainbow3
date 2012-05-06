@@ -215,14 +215,14 @@ int main(int argc, char **argv) {
 	
 	// ###LOOP START###
 	solutions=0;
+	srand(time(NULL));
 	while(trials-- > 0) {
 		
 		if(rand_pass == 0) {
 			// Using known data
 			// get test data - this is a known password/hash pair
 			// from the main table
-			printf("Using Known target.\n");
-			srand(time(NULL));
+			printf("Using Known target.\n");			
 			fp_rbow = fopen(rbt_file,"r");
 			get_rnd_table_entry(target, fp_rbow);
 			fclose(fp_rbow);
