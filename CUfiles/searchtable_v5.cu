@@ -83,7 +83,7 @@ void kernel(TableHeader *header, TableEntry *entry) {
 		while(count > 0) {
 			// Reduce hash to zero terminated password in B
 			// Use freduce.cu
-			reduce_hash(H,B,(reduction_idx+TABLEIDENT));
+			reduce_hash(H,B,(reduction_idx+header->table_id));
 
 			// copy zero terminated string from B to M and note length
 			in = B;
@@ -156,9 +156,9 @@ void kernel(TableHeader *header, TableEntry *entry) {
 
 int main(int argc, char **argv) {
 
-	const char *tables_path = "./rbt/RbowTab_tables_0.rbt";
+	//const char *tables_path = "./rbt/RbowTab_tables_0.rbt";
 	char rbt_file[128];
-	FILE *fp_rbow, *fp_tables;
+	FILE *fp_rbow;
 	TableHeader *header, *dev_header;
 	TableEntry *entry, *dev_entry, *target, *check, *compare;
 	TableHeader *subchain_header;
@@ -239,12 +239,17 @@ int main(int argc, char **argv) {
 		
 
 		// allocate space for subchain tables
-		subchain_header = (TableHeader*)malloc(sizeof(TableHeader));
+		subchain_header = (TableHeader*)malloc(sizeof(TableHeader));		 
 		subchain_entry  = (TableEntry*)malloc(sizeof(TableEntry)*LINKS);
 		if((subchain_header==NULL)||(subchain_entry==NULL)) {
 			printf("Error - searchtable: Subchain host memory allocation failed.\n");
 			exit(1);
 		}
+		
+		// setup the header data
+		fp_rbow = fopen(rbt_file,"r");
+		fread(subchain_header,sizeof(TableHeader),1,fp_rbow);
+		fclose(fp_rbow);	
 
 		// set up the subchain table
 		for(i=0;i<LINKS;i++) {
@@ -254,31 +259,26 @@ int main(int argc, char **argv) {
 				(subchain_entry+i)->final_hash[di] = 0xffffffff;
 			}
 		}
-
+		
 		// allocate device memory
 		HANDLE_ERROR(cudaMalloc((void**)&dev_header,sizeof(TableHeader)));
 		HANDLE_ERROR(cudaMalloc((void**)&dev_entry,sizeof(TableEntry)*LINKS));
 
-		// Copy entries to device
-		HANDLE_ERROR(cudaMemcpy(dev_entry, subchain_entry, sizeof(TableEntry)*LINKS, cudaMemcpyHostToDevice));
-
+		// Copy entries&header to device
+		HANDLE_ERROR(cudaMemcpy(dev_entry,subchain_entry,sizeof(TableEntry)*LINKS,cudaMemcpyHostToDevice));
+		HANDLE_ERROR(cudaMemcpy(dev_header,subchain_header,sizeof(TableHeader),cudaMemcpyHostToDevice));
+		
 		// launch kernel
 		printf("Launching %d blocks of %d threads\n",blocks,threads);
 		kernel<<<blocks,threads>>>(dev_header,dev_entry);
 
 		// copy entries to host
-		HANDLE_ERROR(cudaMemcpy(subchain_entry, dev_entry, sizeof(TableEntry)*LINKS, cudaMemcpyDeviceToHost));
-
-		// Search Rainbow Tables for solution
+		HANDLE_ERROR(cudaMemcpy(subchain_entry,dev_entry,sizeof(TableEntry)*LINKS,cudaMemcpyDeviceToHost));
+		// Should be no change to header
+		HANDLE_ERROR(cudaMemcpy(subchain_header,dev_header,sizeof(TableHeader),cudaMemcpyDeviceToHost));
 		
-		// ----------set up the Rainbow table----------
-		fp_tables = fopen(tables_path,"r");
-		if(fp_tables==NULL) {
-			printf("Error - unable to open %s\n",tables_path);
-			exit(1);
-		}
+		// Search Rainbow Tables for solution
 		printf("Now looking for a valid solution\n");
-		// look for a valid solution
 		fp_rbow = fopen(rbt_file,"r");
 		if(fp_rbow==NULL) {
 			printf("Error - unable to open %s\n",rbt_file);
@@ -315,7 +315,7 @@ int main(int argc, char **argv) {
 				// Forward calculate the chain (entry+di) to (possibly) recover 
 				// the password/hash pair.
 				strcpy(check->initial_password,compare->initial_password);							
-				compute_chain(check,i+1);			
+				compute_chain(header,check,i+1);			
 				if(hash_compare_uint32_t((target)->final_hash,(check+i)->final_hash)==0) {
 					printf("\033[32m");
 					printf("\n=====SOLUTION FOUND=====\n%s\n",(check+i)->initial_password);
@@ -349,11 +349,9 @@ int main(int argc, char **argv) {
 		free(subchain_entry);
 		printf("\nThis trial had %d collisions.\n\n",collisions);
 		// free memory and file handles 
-		fclose(fp_tables);
 	}
 	free(target);
 	printf("This run found %d/%d solutions.\n",solutions,loops);
 	return(0);
 }
-
 

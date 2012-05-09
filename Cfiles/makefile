@@ -16,6 +16,9 @@ csearch : $(objs)
 	
 #-----------------------------------------------------------------------
 
+tablid : tablid.c table_utils.c md5.c ../common/rainbow.h
+	gcc tablid.c table_utils.c md5.c -o ./bin/tablid
+
 single : $(objs)
 	gcc single_chain.c freduce.c fname_gen.c -o ./bin/single
 

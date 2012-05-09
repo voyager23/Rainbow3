@@ -2,7 +2,7 @@
 __host__
 void hash2uint32(char *hash_str, uint32_t *H);
 __host__
-int get_rnd_table_entry(TableEntry *target, FILE * fp);
+int get_rnd_table_entry(TableEntry *target, FILE *fp);
 __host__
 void make_rnd_target(TableEntry *target);
 __host__
@@ -14,7 +14,7 @@ int hash_compare_32bit(void const *p1, void const *p2);
 __host__
 int hash_compare_uint32_t(uint32_t *left, uint32_t *right);
 __host__
-void compute_chain(TableEntry *entry, int links);
+void compute_chain(TableHeader *header,TableEntry *entry, int links);
 
 //-----Definitions-----
 __host__
@@ -61,7 +61,7 @@ int get_rnd_table_entry(TableEntry *target, FILE * fp) {
 		fread(chain,sizeof(TableEntry),1,fp);
 	// randomly select a link and calculate pass/hash pair
 	link = (rand() % LINKS)+1;	
-	compute_chain(chain,link);
+	compute_chain(header,chain,link);
 	// display result
 	printf("From chain commencing %s and at link %d:\n", chain->initial_password, link-1);
 	printf("\nRandomly selected chain data.\nPassword: %s\nHash: ", (chain+link-1)->initial_password);
@@ -94,7 +94,7 @@ void make_rnd_target(TableEntry *target) {
 	target->initial_password[7]= '\0';
 	// DEBUG
 	target->final_hash[0] = 0x776f6272;
-	compute_chain(target,1);
+	compute_chain(NULL,target,1);
 }
 
 __host__
@@ -104,7 +104,7 @@ void show_table_header(TableHeader *header) {
 	printf("Created:	%d\n", header->date);
 	printf("Entries:	%d\n", header->entries);
 	printf("Links:		%d\n", header->links);
-	printf("Index:		%d\n", header->f1);
+	printf("Index:		%d\n", header->table_id);
 	printf("Solutions:	%u\n", header->entries*header->links);
 }
 
@@ -154,7 +154,7 @@ int hash_compare_uint32_t(uint32_t *left, uint32_t *right) {
 }
 
 __host__
-void compute_chain(TableEntry *entry, int links) {
+void compute_chain(TableHeader *header, TableEntry *entry, int links) {
 	// Calculate and store -in detail- a full chain.
 	// Note - function assumes sufficient memory has been allocated for the results.
 	
@@ -235,8 +235,9 @@ void compute_chain(TableEntry *entry, int links) {
 			(entry+link_idx)->final_hash[i] = H[i];
 		}
 
-		// Reduce the Hash and store in B using reduce_hash function		
-		(void)reduce_hash(H,B,(link_idx+TABLEIDENT));
+		// Reduce the Hash and store in B using reduce_hash function
+		if(header!=NULL)		
+			(void)reduce_hash(H,B,(link_idx+header->table_id));
 
 	} // for link_idx=0 ...
 

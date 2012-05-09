@@ -7,7 +7,7 @@
 #ifndef __TABLE_UTILS_H__
 #define __TABLE_UTILS_H__
 	#include "md5.h"
-	#include "rainbow.h"
+	#include "../common/rainbow.h"
 	#include <math.h>
 	#include <stdint.h>
 	#include <stdio.h>

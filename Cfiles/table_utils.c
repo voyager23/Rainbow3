@@ -7,7 +7,7 @@
 */
 
 #include "md5.h"
-#include "rainbow.h"
+#include "../common/rainbow.h"
 #include "table_utils.h"
 
 // Hash constants
@@ -77,7 +77,7 @@ void show_table_header(TableHeader *header) {
 	printf("Created:	%d\n", header->date);
 	printf("Entries:	%d\n", header->entries);
 	printf("Links:		%d\n", header->links);
-	printf("Index:		%d\n", header->f1);
+	printf("Index:		%d\n", header->table_id);
 	printf("Solutions:	%u\n", header->entries*header->links);
 }
 //=============================================================================

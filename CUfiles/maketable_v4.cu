@@ -39,11 +39,13 @@
 
 //======================================================================
 __host__
-void table_setup(TableHeader*,TableEntry*);
+void table_setup(TableHeader*,TableEntry*, uint32_t);
 __host__
 int sort_table(TableHeader*,TableEntry*);
 __host__
 int hash_compare_32bit(void const *p1, void const *p2);
+__host__
+uint32_t get_table_id(char *tid);
 
 __device__ 
 void initHash(uint32_t *h);
@@ -67,7 +69,7 @@ static void HandleError( cudaError_t err,
 
 //======================================================================
 __host__
-void table_setup(TableHeader *header, TableEntry *entry) {
+void table_setup(TableHeader *header, TableEntry *entry, uint32_t table_id) {
 	int i,di;
 	//unsigned int t_size=sizeof(TableHeader)+(sizeof(TableEntry)*T_ENTRIES);
 
@@ -91,7 +93,7 @@ void table_setup(TableHeader *header, TableEntry *entry) {
 	header->hdr_size = sizeof(TableHeader);
 	header->entries = T_ENTRIES;
 	header->links = LINKS;
-	header->f1 =  TABLEIDENT;	// Table Ident/Index
+	header->table_id =  table_id;	// Table Ident
 	header->f2 = 0x3e3e3e3e;	// '>>>>'
 	// Calculate the md5sum of the table entries
 	md5_state_t state;
@@ -311,7 +313,7 @@ void table_calculate(TableHeader *header, TableEntry *entry) {
 		// Reduce the Hash using the table_ident
 		
 		//???????????????????????????????????????????????
-		link_idx = chain_idx + TABLEIDENT;
+		link_idx = chain_idx + header->table_id;
 		//???????????????????????????????????????????????
 		
 		// call reduce function
@@ -339,6 +341,16 @@ void Check_CUDA_Error(const char *message,FILE *table, char *fname) {
 	exit(1);
 	}
 }
+
+
+uint32_t get_table_id(char *tid) {
+	// Revised version of test code
+	// Expects a pointer to a hex string
+	// Returns equivalent uint32_t or zero on failure
+	if(tid==NULL) {return(0);}
+	uint32_t table_id = strtol(tid,NULL,16);
+	return(table_id);
+}
 //=================================Main Code============================
 
 int main(int argc, char **argv) {
@@ -349,7 +361,7 @@ int main(int argc, char **argv) {
 	char sort_file[81];
 	FILE *table, *sort;
 	int i,di,work_unit;
-	uint32_t offset;
+	uint32_t offset,table_id;
 
 	cudaEvent_t start;
 	cudaEvent_t end;
@@ -358,10 +370,24 @@ int main(int argc, char **argv) {
 	size_t count;
 	
 
-	printf("maketable_v4.\n");
+	printf("========= Maketable_v4 =========\n");
+	// Required parameter is the table identifier
+	// Supplied as hex string of the form 0x12ab34cd
+	// Stored internally as uint32_t
+	// String form used to generate the table name
+	// of the form "sort_0x12ab34cd.rbt
 	
-	fname_gen(sort_file,"sort",TABLEIDENT);		// determine the filenames
-	fname_gen(table_file,"new",TABLEIDENT);		// at the same time so tmerge
+	if(argc != 2) {
+		printf("Table Identifier missing.\nUsage: mktab 0x1234abcd\n");
+		exit(1);
+	}
+	if((table_id=get_table_id(argv[1]))==0) {
+		printf("Table index zero not permitted.\n");
+		exit(1);
+	}	
+	
+	fname_gen(sort_file,"sort",table_id);		// determine the filenames
+	fname_gen(table_file,"new",table_id);		// at the same time so tmerge
 	table=fopen(table_file,"w");				// can delete the unrequired files.
 	if(table==NULL) {
 		printf("Error - maketable_v4: Unable to open 'new' file.\n");
@@ -373,7 +399,7 @@ int main(int argc, char **argv) {
 	if((header != NULL)&&(entry != NULL)) {
 		
 		printf("Preparing the table header and initial passwords.\n");
-		table_setup(header,entry);	// initialise header and set initial passwords		
+		table_setup(header,entry,table_id);	// initialise header and set initial passwords		
 
 		// cudaMalloc space for table header
 		HANDLE_ERROR(cudaMalloc((void**)&dev_header,sizeof(TableHeader)));				
@@ -456,10 +482,10 @@ int main(int argc, char **argv) {
 			if( remove( table_file ) != 0 )
 				perror( "Error deleting file\n" );
 			else
-				printf( "File successfully deleted\n" );
+				printf( "original file successfully deleted\n" );
 		}
 	}
-	printf("TABLEIDENT: %u	sort_file %s\n",TABLEIDENT,sort_file);
+	printf("table_id: %u	sort_file %s\n",table_id,sort_file);
 	// Clean up memory
 	free(header);
 	free(entry);

@@ -8,7 +8,7 @@
 	#include <stdint.h>
 	
 	// Define the current table-identification
-	#define TABLEIDENT 903975
+	// #define TABLEIDENT 903975
 	
 	// thread blocks - Note Max value 28 to avoid kernel timeout
 	#define DIMGRIDX 1
@@ -59,7 +59,7 @@
 		unsigned int date;		// creation date in epoch seconds (date +%s)
 		unsigned int entries; 	// Number of table entries
 		unsigned int links;		// Number of links in a chain
-		unsigned int f1;		// Table Index
+		unsigned int table_id;	// Table Index
 		unsigned int f2;		// >>>> marker - not used
 	} TableHeader;
 
