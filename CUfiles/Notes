@@ -189,3 +189,45 @@ int main(int argc, char** argv)
 	tmerge(right, "./rbt/RbowTab_merge.rbt.new");
 	return 0;
 }
+
+
+10 May 2012 - Merging sorted tables
+
+In merge sort you take two (or more) already-sorted lists repeatedly apply the following rules:
+
+    * find the lesser/least of the items of the top of each of the input lists, choosing any of the lowest items if there is a tie
+    * remove that item from its list
+    * add it to your output list
+
+To remove duplicates, you simply modify the rules very slightly:
+
+    * find the lesser/least of the items of the top of each of the input lists, choosing any of the lowest items if there is a tie
+    * remove that item from its list
+    * if it is the same as the last item you added to your output list, throw it away
+    * otherwise, add it to your output list
+
+This will ensure that no two consecutive items on your output list are the same, and that the items in it are in order, which is what you were after.
+
+
+function merge(left,right)
+var list result
+while length(left) > 0 and length(right) > 0
+    if first(left) < first(right)    // <--- change from <= to <
+        append first(left) to result
+        left = rest(left)
+    else if first(left) > first(right)
+        append first(right) to result
+        right = rest(right)
+    else        // <----- added case to remove duplicated items
+        append first(right) to result
+        left = rest(left)
+        right = rest(right)
+    end
+
+end while
+if length(left) > 0 
+    append left to result
+else  
+    append right to result
+return result
+

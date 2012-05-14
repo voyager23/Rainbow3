@@ -1,6 +1,7 @@
 /*
 	* Header file for Rainbow tables
-	* Filename: rainbow.h
+	* Filename: rainbow.
+	* edited sat 12 may
 */
 
 #ifndef __RAINBOW_H__
@@ -8,7 +9,8 @@
 	#include <stdint.h>
 	
 	// Define the current table-identification
-	// #define TABLEIDENT 903975
+	// Used by original version of tmerge
+	#define TABLEIDENT 903975
 	
 	// thread blocks - Note Max value 28 to avoid kernel timeout
 	#define DIMGRIDX 1

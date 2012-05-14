@@ -27,7 +27,7 @@ extern "C"
 	void hash2uint32(char *, uint32_t *);
 	void compute_chain(TableEntry *entry, int links);
 	int hash_compare_uint32_t(uint32_t *left, uint32_t *right);
-	int tmerge(char *sort,char *new_merge);
+	//int tmerge(char *sort,char *new_merge);
 	int get_rnd_table_entry(TableEntry*,FILE*);
 	void reduce_hash(uint32_t H[], uint8_t B[], int link_idx);
 	//=============================================================================

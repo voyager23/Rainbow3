@@ -234,7 +234,7 @@ void compute_chain(TableEntry *entry, int links) {
 
 } // end compute_chain()
 //======================================================================
-
+#if(0)
 int tmerge(char *input,char *new_merge){
 	
 	TableHeader *hdr_left, *hdr_right, *hdr_merge;
@@ -417,7 +417,7 @@ int tmerge(char *input,char *new_merge){
 	printf("Merged %d entries - adding %d.\n",entries_merged,hdr_right->entries-discarded);
 	return(error_flag);
 }
-
+#endif
 int get_rnd_table_entry(TableEntry *target, FILE * fp) {
 	// target is pointer to a single TableEntry struct.
 	// fp is pointer to a stored table file.

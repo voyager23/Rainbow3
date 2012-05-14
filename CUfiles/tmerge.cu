@@ -40,8 +40,131 @@
 // ------Definitions-----
 
 // include the code for generating filenames
+#include "initHash.cu"
+#include "sha256_txfm.cu"
+#include "freduce.cu"
 #include "fname_gen.cu"
+#include "utils.cu"
 
+int tmerge_2(const char *id_str) {
+	FILE *fp_master, *fp_sorted, *fp_merged;
+	TableHeader master_header, sorted_header;
+	TableEntry master_entry, sorted_entry, hold_entry, merged_entry;
+	char fname[128];
+	int compare,first_pass,entries_written,discarded;
+	
+	sprintf(fname,"./rbt/master_%s.rbt",id_str);
+	if((fp_master=fopen(fname,"r"))==NULL) {
+		perror("No master file:");
+		exit(1);
+	}
+	sprintf(fname,"./rbt/sort_%s.rbt",id_str);
+	if((fp_sorted=fopen(fname,"r"))==NULL) {
+		perror("No sort file:");
+		exit(1);
+	}
+	sprintf(fname,"./rbt/merged_%s.rbt",id_str);
+	if((fp_merged=fopen(fname,"w"))==NULL) {
+		perror("No merge file:");
+		exit(1);
+	}
+	fread(&master_header,sizeof(TableHeader),1,fp_master);
+	fread(&sorted_header,sizeof(TableHeader),1,fp_sorted);
+	fread(&master_entry,sizeof(TableEntry),1,fp_master);
+	fread(&sorted_entry,sizeof(TableEntry),1,fp_sorted);
+	first_pass = 1;	entries_written=discarded=0;
+	while((!feof(fp_master))&&(!feof(fp_sorted))) {
+		compare = hash_compare_uint32_t(&(master_entry.final_hash[0]),&(sorted_entry.final_hash[0]));
+		switch(compare) {
+			case(1):	// master > sorted
+				printf("master > sorted hold=sorted\n");
+				memcpy(&hold_entry,&sorted_entry,sizeof(TableHeader));
+				fread(&sorted_entry,sizeof(TableEntry),1,fp_sorted);
+			break;
+			case(-1):	// master < sorted
+				printf("master < sorted hold=master\n");
+				memcpy(&hold_entry,&master_entry,sizeof(TableEntry));
+				fread(&master_entry,sizeof(TableEntry),1,fp_master);			
+			break;
+			case(0):	// master == sorted
+				printf("master == sorted hold=master\n");
+				// copy master to hold
+				memcpy(&hold_entry,&master_entry,sizeof(TableEntry));
+				fread(&master_entry,sizeof(TableEntry),1,fp_master);
+				fread(&sorted_entry,sizeof(TableEntry),1,fp_sorted);
+			break;
+		} //end switch
+		if(first_pass==1) {
+			printf("First pass: hold -> merged -> table\n");
+			first_pass=0;
+			fwrite(&master_header,sizeof(TableHeader),1,fp_merged);
+			memcpy(&merged_entry,&hold_entry,sizeof(TableEntry));			
+			fwrite(&merged_entry,sizeof(TableEntry),1,fp_merged);
+			entries_written++;
+		} else {
+			if(hash_compare_uint32_t(&hold_entry.final_hash[0],&merged_entry.final_hash[0])!=0) {
+				printf("hold != merged hold -> merged -> table\n");
+				memcpy(&merged_entry,&hold_entry,sizeof(TableEntry));
+				fwrite(&merged_entry,sizeof(TableEntry),1,fp_merged);
+				entries_written++;
+			} else {
+				// hold == last write to merged
+				printf("hold == merged discard\n");
+				discarded++;
+			}
+		}		
+	} //end while
+	if(feof(fp_sorted)) {
+		// write balance of master to merged
+		// merged_entry has last write to file
+		printf("writing balance of master to merged\n");
+		while(!feof(fp_master)) {
+			fread(&hold_entry,sizeof(TableEntry),1,fp_master);
+			if(hash_compare_uint32_t(&hold_entry.final_hash[0],&merged_entry.final_hash[0])!=0) {
+				printf("hold != merged hold -> merged -> table\n");
+				memcpy(&merged_entry,&hold_entry,sizeof(TableEntry));
+				fwrite(&merged_entry,sizeof(TableEntry),1,fp_merged);
+				entries_written++;
+			} else {
+				// hold == last write to merged
+				printf("hold == merged discard\n");
+				discarded++;
+			}
+		}
+	} else {
+		// write balance of sorted to merged
+		// merged_entry has last write to file
+		printf("write balance of sorted to merged\n");
+		while(!feof(fp_sorted)) {
+			fread(&hold_entry,sizeof(TableEntry),1,fp_sorted);
+			if(hash_compare_uint32_t(&hold_entry.final_hash[0],&merged_entry.final_hash[0])!=0) {
+				printf("hold != merged hold -> merged -> table\n");
+				memcpy(&merged_entry,&hold_entry,sizeof(TableEntry));
+				fwrite(&merged_entry,sizeof(TableEntry),1,fp_merged);
+				entries_written++;
+			} else {
+				// hold == last write to merged
+				printf("hold == merged discard\n");
+				discarded++;
+			}
+		}
+	}
+	// rewind merged, read header, adjust header data, rewind merged, write new header
+	rewind(fp_merged);
+	fread(&master_header,sizeof(TableHeader),1,fp_merged);
+	master_header.entries = entries_written;
+	rewind(fp_merged);
+	fwrite(&master_header,sizeof(TableHeader),1,fp_merged);
+	
+	fclose(fp_merged);
+	fclose(fp_sorted);
+	fclose(fp_master);
+	printf("Complete. %d entries written and %d entries discarded.\n",entries_written,discarded);
+	printf("Table written to %s\n\n",fname);
+	return(0);
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 int tmerge(char *sort){
 	
 	TableHeader *hdr_left, *hdr_right, *hdr_merge;
@@ -202,7 +325,9 @@ int tmerge(char *sort){
 	printf("Merge file contains %d entries.\n",entries_merged);
 	return(error_flag);
 }
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+#if(0)
 int hash_compare_uint32_t(uint32_t *left, uint32_t *right) {
 	int i;
 	for(i=0; i<8; i++) {
@@ -215,13 +340,15 @@ int hash_compare_uint32_t(uint32_t *left, uint32_t *right) {
 	}
 	return(0);
 }
+#endif
 
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 int filter(const struct dirent* dp) {
 	const char *posn;
 	posn = strstr(dp->d_name, "sort_" );
 	return((posn != NULL));
 }
-
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #if(0)
 char *sort2new(char *buffer) {
 	char *pch;
@@ -237,26 +364,29 @@ char *sort2new(char *buffer) {
 	return(buffer);
 }
 #endif
-
-// ------Main Code------
-
+//+++++++++++++++++++++++++++++++++Main Code++++++++++++++++++++++++++++++++++++
 int main(int argc, char** argv)
 {	
-    struct dirent **namelist;
-    int n;
-    char buffer[256];
-
-    n = scandir("./rbt", &namelist, filter, alphasort);
-    if (n < 0)
-        perror("scandir");
-    else {
-        while (n--) {
-			sprintf(buffer,"./rbt/%s",namelist[n]->d_name);
-            printf("Calling tmerge against: %s\n", buffer);
-            if(tmerge(buffer)==0) printf("Succeded\n");
-            free(namelist[n]);
-        }
-        free(namelist);
-    }
+	char *id="0x01020304";
+	char buffer[128];
+	
+	// call function
+	tmerge_2(id);
+	
+	// read a .rbt file into memory and print out
+	FILE *fp;
+	TableHeader header;
+	TableEntry *entries;
+	sprintf(buffer,"./rbt/merged_%s.rbt",id);
+	fp=fopen(buffer,"r");
+	fread(&header,sizeof(TableHeader),1,fp);
+	int count=header.entries;
+	entries=(TableEntry*)malloc(sizeof(TableEntry)*count);
+	fread(entries,sizeof(TableEntry),count,fp);
+	fclose(fp);
+	show_table_entries(entries,0,count-1);
+		
 	return 0;
 }
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+

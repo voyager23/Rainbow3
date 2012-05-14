@@ -15,6 +15,8 @@ csearch : $(objs)
 	gcc -Wall -pthread -lm  searchtable_v7.c $^ -o ./bin/$@
 	
 #-----------------------------------------------------------------------
+tmerge : tmerge.c table_utils.c table_utils.h md5.c md5.h
+	nvcc tmerge.c table_utils.c md5.c -o bin/tmerg
 
 tablid : tablid.c table_utils.c md5.c ../common/rainbow.h
 	gcc tablid.c table_utils.c md5.c -o ./bin/tablid
