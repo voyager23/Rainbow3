@@ -32,19 +32,12 @@
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
-
 #include <dirent.h>
 
+#include "utils_2.h"
 #include "tmerge.h"
 	
 // ------Definitions-----
-
-// include the code for generating filenames
-#include "initHash.cu"
-#include "sha256_txfm.cu"
-#include "freduce.cu"
-#include "fname_gen.cu"
-#include "utils.cu"
 
 int tmerge_2(const char *id_str) {
 	FILE *fp_master, *fp_sorted, *fp_merged;
