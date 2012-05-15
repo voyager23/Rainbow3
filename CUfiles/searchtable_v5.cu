@@ -14,8 +14,6 @@
 
 //===========================Include headers===============================
 
-#include "../common/rainbow.h"
-
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,9 +22,16 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "../common/rainbow.h"
+
+// nvcc does not support external calls so inline code here...
+//#include "utils_2.h"
+#include "utils_2.cu"
+
 //=========================Declarations=================================
 __global__
 void kernel(TableHeader *header, TableEntry *entry);
+
 //=========================Definitions==================================
 __host__
 static void HandleError( cudaError_t err,
@@ -42,10 +47,7 @@ static void HandleError( cudaError_t err,
 #define HANDLE_ERROR( err ) (HandleError( err, __FILE__, __LINE__ ))
 
 //=========================Include functions and utilities==============
-#include "freduce.cu"
-#include "initHash.cu"
-#include "sha256_txfm.cu"
-#include "utils.cu"
+
 //=========================Kernel=======================================
 __global__
 void kernel(TableHeader *header, TableEntry *entry) {

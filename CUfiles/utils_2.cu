@@ -8,26 +8,13 @@
  * sha256_txfm.cu
  * freduce.cu
  * fname_gen.cu
+ * 
+ * This file must #included to avoid problems with dependencies
 */
 
 #include "utils_2.h"
 
 //================================Definitions===================================
-
-__host__
-void fname_gen(char *buffer, char *type_str, uint32_t tid) {
-	// now takes table_id as parameter
-	// output form: ./rbt/merge_
-	const char *root = "./rbt/";
-	const char *rbt  = "rbt";
-	char table_id[64];
-	
-	sprintf(table_id,"0x%08x",tid);
-	sprintf(buffer,"%s%s_%s.%s",root,type_str,table_id,rbt);
-	
-	printf("\nfname_gen/table_id: %s\n",table_id);
-}
-
 __device__ __host__
 void reduce_hash(uint32_t H[], uint8_t B[], uint32_t link_idx) {
 
@@ -63,7 +50,7 @@ void reduce_hash(uint32_t H[], uint8_t B[], uint32_t link_idx) {
 		B[6] = (b0 % 26) + 'A';
 		B[7] = '\0';
 }
-
+//==============================================================================
 __device__ __host__
 void initHash(uint32_t *h) {
 	h[0] = 0x6a09e667;
@@ -75,7 +62,7 @@ void initHash(uint32_t *h) {
 	h[6] = 0x1f83d9ab;
 	h[7] = 0x5be0cd19;
 }
-
+//==============================================================================
 __device__ __host__
 void sha256_transform(uint32_t *w, uint32_t *H) {
 	//working variables 32 bit words
@@ -123,6 +110,22 @@ void sha256_transform(uint32_t *w, uint32_t *H) {
 	H[6] += g;
 	H[7] += h;
 }
+//==============================================================================
+__host__
+void fname_gen(char *buffer, char *type_str, uint32_t tid) {
+	// now takes table_id as parameter
+	// output form: ./rbt/merge_
+	const char *root = "./rbt/";
+	const char *rbt  = "rbt";
+	char table_id[64];
+	
+	sprintf(table_id,"0x%08x",tid);
+	sprintf(buffer,"%s%s_%s.%s",root,type_str,table_id,rbt);
+	
+	printf("\nfname_gen/table_id: %s\n",table_id);
+}
+
+
 //==============================================================================
 __host__
 void hash2uint32(char *hash_str, uint32_t *H) {

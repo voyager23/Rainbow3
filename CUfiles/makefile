@@ -6,21 +6,21 @@ objs = $(addprefix ./obj/,table_utils.o fname_gen.o md5.o)
 
 deps = rainbow.h table_utils.h freduce.h fname_gen.h md5.h
 
-all : search mktab tmerge
+all :  mktab tmerge search
 	
 #-----------------------------------------------------------------------
 
 thisto : $(objs)
 	gcc -Wall -lm thisto.c $^ -o ./bin/$@
 	
-search: $(objs)
+search: searchtable_v5.cu utils_2.cu utils_2.h
 	nvcc searchtable_v5.cu -o ./bin/search
 	
-mktab : maketable_v4.cu freduce.cu fname_gen.cu md5.cu
-	nvcc maketable_v4.cu ./obj/fname_gen.o ./obj/md5.o -o ./bin/mktab
+mktab : maketable_v4.cu utils_2.cu utils_2.h md5.cu
+	nvcc maketable_v4.cu md5.cu -o ./bin/mktab
 
-tmerge : tmerge.cu $(objs)
-	nvcc tmerge.cu -o ./bin/tmerge
+tmerge : tmerge.cu utils_2.cu utils_2.h tmerge.h
+	nvcc tmerge.cu  -o bin/tmerg
 	
 #-----------------------------------------------------------------------
 

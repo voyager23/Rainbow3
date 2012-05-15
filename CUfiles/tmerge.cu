@@ -33,9 +33,10 @@
 #include <time.h>
 #include <string.h>
 #include <dirent.h>
+#include "tmerge.h"
 
 #include "utils_2.h"
-#include "tmerge.h"
+#include "utils_2.cu"
 	
 // ------Definitions-----
 
@@ -70,17 +71,17 @@ int tmerge_2(const char *id_str) {
 		compare = hash_compare_uint32_t(&(master_entry.final_hash[0]),&(sorted_entry.final_hash[0]));
 		switch(compare) {
 			case(1):	// master > sorted
-				printf("master > sorted hold=sorted\n");
+				//printf("master > sorted hold=sorted\n");
 				memcpy(&hold_entry,&sorted_entry,sizeof(TableHeader));
 				fread(&sorted_entry,sizeof(TableEntry),1,fp_sorted);
 			break;
 			case(-1):	// master < sorted
-				printf("master < sorted hold=master\n");
+				//printf("master < sorted hold=master\n");
 				memcpy(&hold_entry,&master_entry,sizeof(TableEntry));
 				fread(&master_entry,sizeof(TableEntry),1,fp_master);			
 			break;
 			case(0):	// master == sorted
-				printf("master == sorted hold=master\n");
+				//printf("master == sorted hold=master\n");
 				// copy master to hold
 				memcpy(&hold_entry,&master_entry,sizeof(TableEntry));
 				fread(&master_entry,sizeof(TableEntry),1,fp_master);
@@ -88,7 +89,7 @@ int tmerge_2(const char *id_str) {
 			break;
 		} //end switch
 		if(first_pass==1) {
-			printf("First pass: hold -> merged -> table\n");
+			//printf("First pass: hold -> merged -> table\n");
 			first_pass=0;
 			fwrite(&master_header,sizeof(TableHeader),1,fp_merged);
 			memcpy(&merged_entry,&hold_entry,sizeof(TableEntry));			
@@ -96,13 +97,13 @@ int tmerge_2(const char *id_str) {
 			entries_written++;
 		} else {
 			if(hash_compare_uint32_t(&hold_entry.final_hash[0],&merged_entry.final_hash[0])!=0) {
-				printf("hold != merged hold -> merged -> table\n");
+				//printf("hold != merged hold -> merged -> table\n");
 				memcpy(&merged_entry,&hold_entry,sizeof(TableEntry));
 				fwrite(&merged_entry,sizeof(TableEntry),1,fp_merged);
 				entries_written++;
 			} else {
 				// hold == last write to merged
-				printf("hold == merged discard\n");
+				//printf("hold == merged discard\n");
 				discarded++;
 			}
 		}		
@@ -110,34 +111,34 @@ int tmerge_2(const char *id_str) {
 	if(feof(fp_sorted)) {
 		// write balance of master to merged
 		// merged_entry has last write to file
-		printf("writing balance of master to merged\n");
+		//printf("writing balance of master to merged\n");
 		while(!feof(fp_master)) {
 			fread(&hold_entry,sizeof(TableEntry),1,fp_master);
 			if(hash_compare_uint32_t(&hold_entry.final_hash[0],&merged_entry.final_hash[0])!=0) {
-				printf("hold != merged hold -> merged -> table\n");
+				//printf("hold != merged hold -> merged -> table\n");
 				memcpy(&merged_entry,&hold_entry,sizeof(TableEntry));
 				fwrite(&merged_entry,sizeof(TableEntry),1,fp_merged);
 				entries_written++;
 			} else {
 				// hold == last write to merged
-				printf("hold == merged discard\n");
+				//printf("hold == merged discard\n");
 				discarded++;
 			}
 		}
 	} else {
 		// write balance of sorted to merged
 		// merged_entry has last write to file
-		printf("write balance of sorted to merged\n");
+		//printf("write balance of sorted to merged\n");
 		while(!feof(fp_sorted)) {
 			fread(&hold_entry,sizeof(TableEntry),1,fp_sorted);
 			if(hash_compare_uint32_t(&hold_entry.final_hash[0],&merged_entry.final_hash[0])!=0) {
-				printf("hold != merged hold -> merged -> table\n");
+				//printf("hold != merged hold -> merged -> table\n");
 				memcpy(&merged_entry,&hold_entry,sizeof(TableEntry));
 				fwrite(&merged_entry,sizeof(TableEntry),1,fp_merged);
 				entries_written++;
 			} else {
 				// hold == last write to merged
-				printf("hold == merged discard\n");
+				//printf("hold == merged discard\n");
 				discarded++;
 			}
 		}
@@ -360,24 +361,38 @@ char *sort2new(char *buffer) {
 //+++++++++++++++++++++++++++++++++Main Code++++++++++++++++++++++++++++++++++++
 int main(int argc, char** argv)
 {	
-	char *id="0x01020304";
-	char buffer[128];
+	char id[128];
+	char filename[128];
 	
+	printf("========= Tmerge =========\n");
+	// Required parameter is the table identifier
+	// Supplied as hex string of the form 0x12ab34cd
+	// Stored internally as uint32_t
+	// String form used to generate the table name
+	// of the form "sort_0x12ab34cd.rbt
+	
+	if(argc != 2) {
+		printf("Table Identifier missing.\nUsage: tmerge 0x1234abcd\n");
+		exit(1);
+	}
+
+	strcpy(id,argv[1]);
 	// call function
-	tmerge_2(id);
+	tmerge_2(argv[1]);
 	
 	// read a .rbt file into memory and print out
 	FILE *fp;
 	TableHeader header;
-	TableEntry *entries;
-	sprintf(buffer,"./rbt/merged_%s.rbt",id);
-	fp=fopen(buffer,"r");
+	
+	sprintf(filename,"./rbt/merged_%s.rbt",id);
+	fp=fopen(filename,"r");
 	fread(&header,sizeof(TableHeader),1,fp);
-	int count=header.entries;
-	entries=(TableEntry*)malloc(sizeof(TableEntry)*count);
-	fread(entries,sizeof(TableEntry),count,fp);
+	show_table_header(&header);
+	//int count=header.entries;
+	//entries=(TableEntry*)malloc(sizeof(TableEntry)*count);
+	//fread(entries,sizeof(TableEntry),count,fp);
 	fclose(fp);
-	show_table_entries(entries,0,count-1);
+	//show_table_entries(entries,0,count-1);
 		
 	return 0;
 }
