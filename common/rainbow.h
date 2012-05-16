@@ -17,7 +17,7 @@
 	// threads per block
 	#define THREADS  1024
 	// Split the total work into Work Units to avoid kernel timeout
-	#define WORKUNITS 4
+	#define WORKUNITS 8
 	// Number of links in chain - defining characteristic of table.
 	#define LINKS 2048
 	// limit password to MAXLENGTH chars

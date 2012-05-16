@@ -218,7 +218,7 @@ int main(int argc, char **argv) {
 	// ###LOOP START###
 	solutions=0;
 	srand(time(NULL));
-	while(trials-- > 0) {
+	while(loops-- > 0) {
 		
 		if(rand_pass == 0) {
 			// Using known data
@@ -286,7 +286,7 @@ int main(int argc, char **argv) {
 			printf("Error - unable to open %s\n",rbt_file);
 			exit(1);
 		} else {
-			printf("\nUsing table %s\n", rbt_file);
+			printf("Using table %s\n", rbt_file);
 		}
 		
 		header = (TableHeader*)malloc(sizeof(TableHeader));
@@ -320,7 +320,7 @@ int main(int argc, char **argv) {
 				compute_chain(header,check,i+1);			
 				if(hash_compare_uint32_t((target)->final_hash,(check+i)->final_hash)==0) {
 					printf("\033[32m");
-					printf("\n=====SOLUTION FOUND=====\n%s\n",(check+i)->initial_password);
+					printf("=====SOLUTION FOUND=====\n\t%s\n",(check+i)->initial_password);
 					for(dx=0;dx<8;dx++) printf("%08x ", (target)->final_hash[dx]);
 					printf("\033[0m");
 					solutions++;
@@ -337,7 +337,7 @@ int main(int argc, char **argv) {
 		} // for(i=0; ...)
 		if(i==LINKS) {
 			printf("\033[31m");
-			printf("\n=====No solution found for this hash=====\n");
+			printf("=====No solution found for this hash=====\n");
 			for(dx=0;dx<8;dx++) printf("%08x ", (target)->final_hash[dx]);
 			printf("\033[0m");
 		}
@@ -353,7 +353,7 @@ int main(int argc, char **argv) {
 		// free memory and file handles 
 	}
 	free(target);
-	printf("This run found %d/%d solutions.\n",solutions,loops);
+	printf("This run found %d/%d solutions.\n",solutions,trials);
 	return(0);
 }
 

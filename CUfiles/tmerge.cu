@@ -361,8 +361,8 @@ char *sort2new(char *buffer) {
 //+++++++++++++++++++++++++++++++++Main Code++++++++++++++++++++++++++++++++++++
 int main(int argc, char** argv)
 {	
-	char id[128];
-	char filename[128];
+	char filename_1[128], filename_2[128];
+	
 	
 	printf("========= Tmerge =========\n");
 	// Required parameter is the table identifier
@@ -376,24 +376,40 @@ int main(int argc, char** argv)
 		exit(1);
 	}
 
-	strcpy(id,argv[1]);
 	// call function
 	tmerge_2(argv[1]);
 	
-	// read a .rbt file into memory and print out
+	// read a .rbt file into memory and print out header
 	FILE *fp;
-	TableHeader header;
-	
-	sprintf(filename,"./rbt/merged_%s.rbt",id);
-	fp=fopen(filename,"r");
+	TableHeader header;	
+	sprintf(filename_1,"./rbt/merged_%s.rbt",argv[1]);
+	fp=fopen(filename_1,"r");
 	fread(&header,sizeof(TableHeader),1,fp);
 	show_table_header(&header);
-	//int count=header.entries;
-	//entries=(TableEntry*)malloc(sizeof(TableEntry)*count);
-	//fread(entries,sizeof(TableEntry),count,fp);
 	fclose(fp);
-	//show_table_entries(entries,0,count-1);
-		
+	
+	// remove sorted
+	sprintf(filename_1,"./rbt/sort_%s.rbt",argv[1]);
+	if( remove(filename_1 ) != 0 )
+		perror( "Error deleting sorted file" );
+	else
+		puts( "Sorted file successfully deleted" );
+
+	// master -> saved
+	sprintf(filename_1,"./rbt/master_%s.rbt",argv[1]);
+	sprintf(filename_2,"./rbt/saved_%s.rbt",argv[1]);
+	if( rename(filename_1,filename_2) != 0 )
+		perror( "Error renaming master file" );
+	else
+		puts( "Master file successfully renamed" );
+	
+	// merged -> master
+	sprintf(filename_2,"./rbt/merged_%s.rbt",argv[1]);
+	if( rename(filename_2,filename_1) != 0 )
+		perror( "Error renaming merged file" );
+	else
+		puts( "Merged file successfully renamed" );
+	
 	return 0;
 }
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
