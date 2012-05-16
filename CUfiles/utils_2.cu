@@ -122,7 +122,7 @@ void fname_gen(char *buffer, char *type_str, uint32_t tid) {
 	sprintf(table_id,"0x%08x",tid);
 	sprintf(buffer,"%s%s_%s.%s",root,type_str,table_id,rbt);
 	
-	printf("\nfname_gen/table_id: %s\n",table_id);
+	//printf("\nfname_gen/table_id: %s\n",table_id);
 }
 
 
@@ -215,7 +215,7 @@ void show_table_header(TableHeader *header) {
 	printf("Created:	%d\n", header->date);
 	printf("Entries:	%d\n", header->entries);
 	printf("Links:		%d\n", header->links);
-	printf("Index:		%d\n", header->table_id);
+	printf("Index:		%u\n", header->table_id);
 	printf("Solutions:	%u\n", header->entries*header->links);
 }
 //==============================================================================
