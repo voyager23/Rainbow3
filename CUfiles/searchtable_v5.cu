@@ -25,7 +25,6 @@
 #include "../common/rainbow.h"
 
 // nvcc does not support external calls so inline code here...
-//#include "utils_2.h"
 #include "utils_2.cu"
 
 //=========================Declarations=================================
@@ -46,7 +45,7 @@ static void HandleError( cudaError_t err,
 
 #define HANDLE_ERROR( err ) (HandleError( err, __FILE__, __LINE__ ))
 
-//=========================Include functions and utilities==============
+//=========================functions====================================
 
 //=========================Kernel=======================================
 __global__
@@ -158,8 +157,8 @@ void kernel(TableHeader *header, TableEntry *entry) {
 
 int main(int argc, char **argv) {
 
-	//const char *tables_path = "./rbt/RbowTab_tables_0.rbt";
 	char rbt_file[128];
+	
 	FILE *fp_rbow;
 	TableHeader *header, *dev_header;
 	TableEntry *entry, *dev_entry, *target, *check, *compare;
@@ -171,18 +170,32 @@ int main(int argc, char **argv) {
 	int trials=1;		// number of trials to run
 	int rand_pass=0;	// use random passwords (0=no)
 	int c,loops=1;
+	
+	TargetList tlist;
+	int tlist_flag = 0;
 	 
 	printf("This is searchtable_v5 (cuda).\n");
-	printf("Search a merged Rainbow Table for a selected password.\n\n");
+	printf("Search a merged Rainbow Table for a selected password.\n");
 	
 	// Get-set options here	    
-	while ((c = getopt (argc, argv, "n:r")) != -1)
+	while ((c = getopt (argc, argv, "f:n:r")) != -1)
 	switch (c) {
 		case 'n':
 			loops = trials = atoi(optarg);
 			break;
 		case 'r':
 			rand_pass=1;
+			break;
+		case 'f':
+			tlist_flag=make_target_list(optarg,&tlist);
+			// if tlist_flag > 0, count will be number of entries
+			// and idx will be zero
+			if(tlist_flag > 0) {
+				loops=trials=tlist_flag;
+				printf("Found %d targets to check.\n",tlist_flag);
+			} else {
+				loops=0;
+			}
 			break;
 		default:
 			printf("Error in getopt - stopping.\n");
@@ -203,34 +216,34 @@ int main(int argc, char **argv) {
 			printf("Path to Rbow Tab: %s\n",rbt_file);
 		}
 	}
-	
+
 	// Sanity checks. In this case assert (LINKS % THREADS)==0
 	if((LINKS%THREADS)!=0) {
 		printf("Sanity test in csearch failed.\n");
 		exit(1);
 	}
 	// calculate number of blocks to launch
-	const int threads=THREADS;				// threads per block
-	const int blocks = (LINKS+THREADS-1)/threads;		// number of thread blocks
-
-	target = (TableEntry*)malloc(sizeof(TableEntry));
+	const int threads=THREADS;						// threads per block
+	const int blocks = (LINKS+THREADS-1)/threads;	// number of thread blocks	
 	
 	// ###LOOP START###
 	solutions=0;
 	srand(time(NULL));
-	while(loops-- > 0) {
-		
-		if(rand_pass == 0) {
+	while(loops-- > 0) {		
+		if(tlist_flag > 0) {
+			target = &tlist.target_list[tlist.idx++];
+		} else if(rand_pass == 0) {
 			// Using known data
 			// get test data - this is a known password/hash pair
 			// from the main table
-			printf("Using Known target.\n");			
+			printf("Using Known target.\n");
+			target = (TableEntry*)malloc(sizeof(TableEntry));			
 			fp_rbow = fopen(rbt_file,"r");
 			get_rnd_table_entry(target, fp_rbow);
-			fclose(fp_rbow);
-			
+			fclose(fp_rbow);			
 		} else {
 			printf("Using Random target.\n");
+			target = (TableEntry*)malloc(sizeof(TableEntry));
 			make_rnd_target(target);
 		}		
 		
@@ -239,7 +252,6 @@ int main(int argc, char **argv) {
 		for(dx=0;dx<8;dx++) printf("%08x ", target->final_hash[dx]);
 		printf("\n");
 		
-
 		// allocate space for subchain tables
 		subchain_header = (TableHeader*)malloc(sizeof(TableHeader));		 
 		subchain_entry  = (TableEntry*)malloc(sizeof(TableEntry)*LINKS);
@@ -352,7 +364,7 @@ int main(int argc, char **argv) {
 		printf("\nThis trial had %d collisions.\n\n",collisions);
 		// free memory and file handles 
 	}
-	free(target);
+	if (tlist_flag==0) free(target);
 	printf("This run found %d/%d solutions.\n",solutions,trials);
 	return(0);
 }

@@ -35,5 +35,10 @@ void initHash(uint32_t *h);
 __device__ __host__
 void reduce_hash(uint32_t H[], uint8_t B[], uint32_t link_idx);
 
+__host__
+int filter_str(char *);
+__host__
+int make_target_list(char *fpath, TargetList *tl);
+
 //------------------------------------------------------------------------------
 #endif

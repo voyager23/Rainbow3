@@ -8,10 +8,6 @@
 	#define __RAINBOW_H__
 	#include <stdint.h>
 	
-	// Define the current table-identification
-	// Used by original version of tmerge
-	#define TABLEIDENT 903975
-	
 	// thread blocks - Note Max value 28 to avoid kernel timeout
 	#define DIMGRIDX 24
 	// threads per block
@@ -28,6 +24,9 @@
 	#define MAXTABS 64
 	// number of table entries to calc
 	#define T_ENTRIES (WORKUNITS*DIMGRIDX*THREADS)
+	
+	#define BUFFERSIZE 128
+	#define MAXHASHES 128
 
 	#define ROTR(a,b) (((a) >> (b)) | ((a) << (32-(b))))
 	#define CH(x,y,z) (((x) & (y)) ^ (~(x) & (z)))
@@ -76,6 +75,10 @@
 		uint16_t pad;				
 	} TableEntry;
 	//------------------------------------------------------------------
-	
+	typedef struct {
+		int count;	// no. of entries
+		int idx;	// working index
+		TableEntry target_list[MAXHASHES];	//array of TableEntry
+	}TargetList;
 #endif
 
