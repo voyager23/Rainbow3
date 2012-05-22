@@ -14,7 +14,7 @@ thisto : $(objs)
 	gcc -Wall -lm thisto.c $^ -o ./bin/$@
 	
 search: searchtable_v5.cu utils_2.cu utils_2.h
-	nvcc searchtable_v5.cu -o ./bin/search
+	nvcc searchtable_v5.cu -o ./bin/search -liniparser
 	
 mktab : maketable_v4.cu utils_2.cu utils_2.h md5.cu
 	nvcc maketable_v4.cu md5.cu -o ./bin/mktab

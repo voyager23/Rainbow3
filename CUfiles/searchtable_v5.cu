@@ -4,7 +4,7 @@
 	* 05Apr2012
 	* Incorporating new code from the threaded searchtable_v7.c
 	* nvcc -Xlinker -lm searchtable_v3.cu table_utils.c md5.c
-	* Updated version 22Apr2012
+	* Updated version 20May2012
 	*
 */
 
@@ -22,16 +22,36 @@
 #include <time.h>
 #include <unistd.h>
 
+#include <iniparser.h>
+
 #include "../common/rainbow.h"
 
 // nvcc does not support external calls so inline code here...
 #include "utils_2.cu"
 
-//=========================Declarations=================================
+//--------TEST AREA-----
+typedef char FName[128];
+typedef struct {	
+	FName master_file[128];
+	FName *fn_ptr;
+	int count;
+}MasterFileList;
+
+void make_master_list(char *, MasterFileList *);
+
+void make_master_list(char *rbt_path, MasterFileList *mfl) {
+	// Parameters: path to 'rbt' folder, pointer to MasterFileList
+	// On exit, the number of master files is in count and the relative
+	// paths are in the master_file array.
+	
+	
+}
+//----------------------
+
 __global__
 void kernel(TableHeader *header, TableEntry *entry);
 
-//=========================Definitions==================================
+//=========================CUDA Error Handling==================================
 __host__
 static void HandleError( cudaError_t err,
                          const char *file,
@@ -44,9 +64,6 @@ static void HandleError( cudaError_t err,
 }
 
 #define HANDLE_ERROR( err ) (HandleError( err, __FILE__, __LINE__ ))
-
-//=========================functions====================================
-
 //=========================Kernel=======================================
 __global__
 void kernel(TableHeader *header, TableEntry *entry) {
@@ -203,8 +220,9 @@ int main(int argc, char **argv) {
 	}
 	
 	// Non-option parameter path/to/rbow/table
+	// Here we set the table to consult
 	if(argv[optind]==NULL) {
-		printf("Usage:search [-n [trials] ] [-r] path/to/rbow/tab.rbt\n");
+		printf("Usage:search [-f] [-n [trials] ] [-r] path/to/rbow/tab.rbt\n");
 		exit(1);
 	} else {
 		strncpy(rbt_file,argv[optind],127);
@@ -226,9 +244,10 @@ int main(int argc, char **argv) {
 	const int threads=THREADS;						// threads per block
 	const int blocks = (LINKS+THREADS-1)/threads;	// number of thread blocks	
 	
-	// ###LOOP START###
 	solutions=0;
 	srand(time(NULL));
+	
+	// ###LOOP START###
 	while(loops-- > 0) {		
 		if(tlist_flag > 0) {
 			target = &tlist.target_list[tlist.idx++];
@@ -363,7 +382,8 @@ int main(int argc, char **argv) {
 		free(subchain_entry);
 		printf("\nThis trial had %d collisions.\n\n",collisions);
 		// free memory and file handles 
-	}
+	} // ###LOOP END###
+	
 	if (tlist_flag==0) free(target);
 	printf("This run found %d/%d solutions.\n",solutions,trials);
 	return(0);
