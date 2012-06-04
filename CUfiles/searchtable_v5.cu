@@ -29,24 +29,7 @@
 // nvcc does not support external calls so inline code here...
 #include "utils_2.cu"
 
-//--------TEST AREA-----
-typedef char FName[128];
-typedef struct {	
-	FName master_file[128];
-	FName *fn_ptr;
-	int count;
-}MasterFileList;
 
-void make_master_list(char *, MasterFileList *);
-
-void make_master_list(char *rbt_path, MasterFileList *mfl) {
-	// Parameters: path to 'rbt' folder, pointer to MasterFileList
-	// On exit, the number of master files is in count and the relative
-	// paths are in the master_file array.
-	
-	
-}
-//----------------------
 
 __global__
 void kernel(TableHeader *header, TableEntry *entry);
@@ -192,7 +175,7 @@ int main(int argc, char **argv) {
 	int tlist_flag = 0;
 	 
 	printf("This is searchtable_v5 (cuda).\n");
-	printf("Search a merged Rainbow Table for a selected password.\n");
+	printf("Search merged Rainbow Table(s) for a selected password.\n");
 	
 	// Get-set options here	    
 	while ((c = getopt (argc, argv, "f:n:r")) != -1)
@@ -220,7 +203,10 @@ int main(int argc, char **argv) {
 	}
 	
 	// Non-option parameter path/to/rbow/table
-	// Here we set the table to consult
+	// Here we are setting the table to consult
+	// Replace this code block with code to parse the .ini file
+	
+#if(0)
 	if(argv[optind]==NULL) {
 		printf("Usage:search [-f] [-n [trials] ] [-r] path/to/rbow/tab.rbt\n");
 		exit(1);
@@ -234,6 +220,60 @@ int main(int argc, char **argv) {
 			printf("Path to Rbow Tab: %s\n",rbt_file);
 		}
 	}
+#endif
+	//--------------New Code-----------------
+	
+	#define PATHSIZE 128
+	#define NPATHS 128
+
+	typedef struct mfl {
+		char (*path_ptr) [PATHSIZE];
+		char master_file [NPATHS][PATHSIZE];
+		int count;
+	}MasterFileList;
+	
+	char *ini_name = "rainbow.ini";
+	char **key_str;	
+	int n_keys;	
+	dictionary *ini;
+	MasterFileList mfl;
+	int major_loop_count, minor_loop_count;
+	// initialise masterfilelist
+	mfl.path_ptr = &mfl.master_file[0];
+	mfl.count = 0;
+	// open .ini file
+	ini = iniparser_load(ini_name);
+    if (ini==NULL) {
+        fprintf(stderr, "cannot parse file: %s\n", ini_name);
+        return -1 ;
+    }    
+    // debug dump file contents
+    // iniparser_dump(ini, stderr);    
+    
+    // get number of keys and pointer to first key
+    n_keys = iniparser_getsecnkeys(ini,"masterfiles");
+    key_str= iniparser_getseckeys(ini,"masterfiles");
+    
+    // loop through key/value pairs copying
+    // value to masterfilelist and incrementing
+    // the count.
+    for(i=0; i<n_keys;i++) {	
+		printf("%s\n",*key_str);
+		printf("%s\n",iniparser_getstring(ini,*key_str,NULL));
+		strcpy((char*)mfl.path_ptr, iniparser_getstring(ini,*key_str++,NULL));
+		mfl.path_ptr++;	mfl.count++;
+    }
+    printf("\n");
+    // reset the pointer in mfl and loop through values recovered
+	mfl.path_ptr = &mfl.master_file[0];
+	for(i=0;i<mfl.count;i++) {
+		printf("->%s<-\n",mfl.path_ptr++);
+	}
+	
+	// Cleanup
+	iniparser_freedict(ini);		
+	
+	//--------------End New Code-------------
 
 	// Sanity checks. In this case assert (LINKS % THREADS)==0
 	if((LINKS%THREADS)!=0) {
@@ -244,148 +284,167 @@ int main(int argc, char **argv) {
 	const int threads=THREADS;						// threads per block
 	const int blocks = (LINKS+THREADS-1)/threads;	// number of thread blocks	
 	
-	solutions=0;
+	
 	srand(time(NULL));
-	
 	// ###LOOP START###
-	while(loops-- > 0) {		
-		if(tlist_flag > 0) {
-			target = &tlist.target_list[tlist.idx++];
-		} else if(rand_pass == 0) {
-			// Using known data
-			// get test data - this is a known password/hash pair
-			// from the main table
-			printf("Using Known target.\n");
-			target = (TableEntry*)malloc(sizeof(TableEntry));			
-			fp_rbow = fopen(rbt_file,"r");
-			get_rnd_table_entry(target, fp_rbow);
-			fclose(fp_rbow);			
-		} else {
-			printf("Using Random target.\n");
-			target = (TableEntry*)malloc(sizeof(TableEntry));
-			make_rnd_target(target);
-		}		
-		
-		// confirmation	of target
-		printf("Confirming selected target data.\nPassword: %s\nHash: ", target->initial_password);
-		for(dx=0;dx<8;dx++) printf("%08x ", target->final_hash[dx]);
-		printf("\n");
-		
-		// allocate space for subchain tables
-		subchain_header = (TableHeader*)malloc(sizeof(TableHeader));		 
-		subchain_entry  = (TableEntry*)malloc(sizeof(TableEntry)*LINKS);
-		if((subchain_header==NULL)||(subchain_entry==NULL)) {
-			printf("Error - searchtable: Subchain host memory allocation failed.\n");
-			exit(1);
-		}
-		
-		// setup the header data
-		fp_rbow = fopen(rbt_file,"r");
-		fread(subchain_header,sizeof(TableHeader),1,fp_rbow);
-		fclose(fp_rbow);	
-
-		// set up the subchain table
-		for(i=0;i<LINKS;i++) {
-			(subchain_entry+i)->sublinks=0;
-			for(di=0;di<8;di++) {
-				(subchain_entry+i)->input_hash[di] = target->final_hash[di];
-				(subchain_entry+i)->final_hash[di] = 0xffffffff;
-			}
-		}
-		
-		// allocate device memory
-		HANDLE_ERROR(cudaMalloc((void**)&dev_header,sizeof(TableHeader)));
-		HANDLE_ERROR(cudaMalloc((void**)&dev_entry,sizeof(TableEntry)*LINKS));
-
-		// Copy entries&header to device
-		HANDLE_ERROR(cudaMemcpy(dev_entry,subchain_entry,sizeof(TableEntry)*LINKS,cudaMemcpyHostToDevice));
-		HANDLE_ERROR(cudaMemcpy(dev_header,subchain_header,sizeof(TableHeader),cudaMemcpyHostToDevice));
-		
-		// launch kernel
-		printf("Launching %d blocks of %d threads\n",blocks,threads);
-		kernel<<<blocks,threads>>>(dev_header,dev_entry);
-
-		// copy entries to host
-		HANDLE_ERROR(cudaMemcpy(subchain_entry,dev_entry,sizeof(TableEntry)*LINKS,cudaMemcpyDeviceToHost));
-		// Should be no change to header
-		HANDLE_ERROR(cudaMemcpy(subchain_header,dev_header,sizeof(TableHeader),cudaMemcpyDeviceToHost));
-		
-		// Search Rainbow Tables for solution
-		printf("Now looking for a valid solution\n");
-		fp_rbow = fopen(rbt_file,"r");
-		if(fp_rbow==NULL) {
-			printf("Error - unable to open %s\n",rbt_file);
-			exit(1);
-		} else {
-			printf("Using table %s\n", rbt_file);
-		}
-		
-		header = (TableHeader*)malloc(sizeof(TableHeader));
-		fread(header,sizeof(TableHeader),1,fp_rbow);
-		entry = (TableEntry*)malloc(sizeof(TableEntry)*header->entries);
-		fread(entry,sizeof(TableEntry),header->entries,fp_rbow);
-		fclose(fp_rbow);
-		
-		// try to match a subchain final_hash against final_hash in main table
-		// if match found - report chain_index and link_index.
-		printf("Looking for a matching chain...\n");
-		collisions=0;
-		
-		check = (TableEntry*)malloc(sizeof(TableEntry)*(LINKS));
-		for(i=0;i<LINKS;i++) {				
-			// left points to candidate
-			// left = (subchain_entry+i)->final_hash;
-			// right points to merged table ordered by ascending final_hash
-			// right = (entry+di)->final_hash;
-			/*
-			 * if compare == 1,  candidate > merged, continue
-			 * if compare == -1, candidate < merged, break
-			 */			
-			compare = (TableEntry*)bsearch((subchain_entry+i), entry,
-				header->entries, sizeof(TableEntry), hash_compare_32bit );
-
-			if(compare!=NULL) {
-				// Forward calculate the chain (entry+di) to (possibly) recover 
-				// the password/hash pair.
-				strcpy(check->initial_password,compare->initial_password);							
-				compute_chain(header,check,i+1);			
-				if(hash_compare_uint32_t((target)->final_hash,(check+i)->final_hash)==0) {
-					printf("\033[32m");
-					printf("=====SOLUTION FOUND=====\n\t%s\n",(check+i)->initial_password);
-					for(dx=0;dx<8;dx++) printf("%08x ", (target)->final_hash[dx]);
-					printf("\033[0m");
-					solutions++;
-					free(check);
-					free(entry);
-					free(header);
-					goto found;
-				} else { 
-					collisions++; 
-				}
-				//free(check);				 
-			} else { 
-			} // if (compare)				
-		} // for(i=0; ...)
-		if(i==LINKS) {
-			printf("\033[31m");
-			printf("=====No solution found for this hash=====\n");
-			for(dx=0;dx<8;dx++) printf("%08x ", (target)->final_hash[dx]);
-			printf("\033[0m");
-		}
-		free(check);		
-		free(entry);
-		free(header);
-		// end valid solution search
-		found:
-		// next two free() moved outside loop
-		free(subchain_header);
-		free(subchain_entry);
-		printf("\nThis trial had %d collisions.\n\n",collisions);
-		// free memory and file handles 
-	} // ###LOOP END###
 	
+	// reset the pointer in mfl and loop through values
+	mfl.path_ptr = &mfl.master_file[0];
+	for(major_loop_count=0; major_loop_count < mfl.count; major_loop_count++) {
+		strcpy(rbt_file, (char*)mfl.path_ptr++);	// load rbt_file with a table name
+		minor_loop_count=loops;
+		tlist.idx=0;
+		solutions=0;
+	
+		while(minor_loop_count-- > 0) {		
+			if(tlist_flag > 0) {
+				target = &tlist.target_list[tlist.idx++];
+			} else {
+				if(rand_pass == 0) {
+					// Using known data
+					// get test data - this is a known password/hash pair
+					// from the main table
+					printf("Using Known target.\n");
+					target = (TableEntry*)malloc(sizeof(TableEntry));			
+					fp_rbow = fopen(rbt_file,"r");
+					get_rnd_table_entry(target, fp_rbow);
+					fclose(fp_rbow);			
+				} else {
+					printf("Using Random target.\n");
+					target = (TableEntry*)malloc(sizeof(TableEntry));
+					make_rnd_target(target);
+				}
+			}		
+			
+			// confirmation	of target
+			printf("Confirming selected target data.\nPassword: %s\nHash: ", target->initial_password);
+			for(dx=0;dx<8;dx++) printf("%08x ", target->final_hash[dx]);
+			printf("\n");
+			
+			// allocate space for subchain tables
+			subchain_header = (TableHeader*)malloc(sizeof(TableHeader));		 
+			subchain_entry  = (TableEntry*)malloc(sizeof(TableEntry)*LINKS);
+			if((subchain_header==NULL)||(subchain_entry==NULL)) {
+				printf("Error - searchtable: Subchain host memory allocation failed.\n");
+				exit(1);
+			} else { printf("Space for subchains allocated.\n"); }
+			
+			// setup the header data
+			if((fp_rbow = fopen(rbt_file,"r"))==NULL) {
+				// probable config file error - stop
+				printf("Failed to open %s \n",rbt_file);				
+				exit(1);
+			}
+			fread(subchain_header,sizeof(TableHeader),1,fp_rbow);
+			fclose(fp_rbow);
+			
+			printf("Header data read.\n");
+
+			// set up the subchain table
+			for(i=0;i<LINKS;i++) {
+				(subchain_entry+i)->sublinks=0;
+				for(di=0;di<8;di++) {
+					(subchain_entry+i)->input_hash[di] = target->final_hash[di];
+					(subchain_entry+i)->final_hash[di] = 0xffffffff;
+				}
+			}
+			
+			printf("Subchains setup.\n");
+			
+			// allocate device memory
+			HANDLE_ERROR(cudaMalloc((void**)&dev_header,sizeof(TableHeader)));
+			HANDLE_ERROR(cudaMalloc((void**)&dev_entry,sizeof(TableEntry)*LINKS));
+
+			// Copy entries&header to device
+			HANDLE_ERROR(cudaMemcpy(dev_entry,subchain_entry,sizeof(TableEntry)*LINKS,cudaMemcpyHostToDevice));
+			HANDLE_ERROR(cudaMemcpy(dev_header,subchain_header,sizeof(TableHeader),cudaMemcpyHostToDevice));
+			
+			// launch kernel
+			printf("Launching %d blocks of %d threads\n",blocks,threads);
+			kernel<<<blocks,threads>>>(dev_header,dev_entry);
+
+			// copy entries to host
+			HANDLE_ERROR(cudaMemcpy(subchain_entry,dev_entry,sizeof(TableEntry)*LINKS,cudaMemcpyDeviceToHost));
+			// Should be no change to header
+			HANDLE_ERROR(cudaMemcpy(subchain_header,dev_header,sizeof(TableHeader),cudaMemcpyDeviceToHost));
+			
+			// Search Rainbow Tables for solution
+			printf("Now looking for a valid solution\n");
+			fp_rbow = fopen(rbt_file,"r");
+			if(fp_rbow==NULL) {
+				printf("Error - unable to open %s\n",rbt_file);
+				exit(1);
+			} else {
+				printf("Using table %s\n", rbt_file);
+			}
+			
+			header = (TableHeader*)malloc(sizeof(TableHeader));
+			fread(header,sizeof(TableHeader),1,fp_rbow);
+			entry = (TableEntry*)malloc(sizeof(TableEntry)*header->entries);
+			fread(entry,sizeof(TableEntry),header->entries,fp_rbow);
+			fclose(fp_rbow);
+			
+			// try to match a subchain final_hash against final_hash in main table
+			// if match found - report chain_index and link_index.
+			printf("Looking for a matching chain...\n");
+			collisions=0;
+			
+			check = (TableEntry*)malloc(sizeof(TableEntry)*(LINKS));
+			for(i=0;i<LINKS;i++) {				
+				// left points to candidate
+				// left = (subchain_entry+i)->final_hash;
+				// right points to merged table ordered by ascending final_hash
+				// right = (entry+di)->final_hash;
+				/*
+				 * if compare == 1,  candidate > merged, continue
+				 * if compare == -1, candidate < merged, break
+				 */			
+				compare = (TableEntry*)bsearch((subchain_entry+i), entry,
+					header->entries, sizeof(TableEntry), hash_compare_32bit );
+
+				if(compare!=NULL) {
+					// Forward calculate the chain (entry+di) to (possibly) recover 
+					// the password/hash pair.
+					strcpy(check->initial_password,compare->initial_password);							
+					compute_chain(header,check,i+1);			
+					if(hash_compare_uint32_t((target)->final_hash,(check+i)->final_hash)==0) {
+						printf("\033[32m");
+						printf("=====SOLUTION FOUND=====\n\t%s\n",(check+i)->initial_password);
+						for(dx=0;dx<8;dx++) printf("%08x ", (target)->final_hash[dx]);
+						printf("\033[0m");
+						solutions++;
+						free(check);
+						free(entry);
+						free(header);
+						goto found;
+					} else { 
+						collisions++; 
+					}
+					//free(check);				 
+				} else { 
+				} // if (compare)				
+			} // for(i=0; ...)
+			if(i==LINKS) {
+				printf("\033[31m");
+				printf("=====No solution found for this hash=====\n");
+				for(dx=0;dx<8;dx++) printf("%08x ", (target)->final_hash[dx]);
+				printf("\033[0m");
+			}
+			free(check);		
+			free(entry);
+			free(header);
+			// end valid solution search
+			found:
+			// next two free() moved outside loop
+			free(subchain_header);
+			free(subchain_entry);
+			printf("\nThis trial had %d collisions.\n",collisions);
+			// free memory and file handles 
+		} // ###LOOP END###
+		printf("This run found %d/%d solutions.\n===========\n",solutions,trials);
+	}
 	if (tlist_flag==0) free(target);
-	printf("This run found %d/%d solutions.\n",solutions,trials);
+	
 	return(0);
 }
 
